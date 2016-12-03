@@ -171,7 +171,7 @@ function shrink(filename)
 
       println("No constraints violated! Exiting.")
       break;
-      
+
     end
 
     #Calculate consensus vector
@@ -183,8 +183,27 @@ function shrink(filename)
     println("Consensus vector calculated as:")
     println(t_vector)
 
-    #If the length of the consensus vector is too short, exit unsuccessfully
-    
+    #Calculate length of consensus vector
+    t_vector_sum = 0
+    for t in t_vector
+      t_vector_sum = t_vector_sum + t^2
+    end
+    t_vector_length = sqrt(t_vector_sum)
+
+    #If the length of the consensus vector is too short exit unsuccessfully
+    if t_vector_length < beta
+      println("Length of consensus vector is too short, exiting unsuccssfully")
+    end
+
+    #Move to new position and repeat
+    t_counter = 1
+    for t in t_vector
+      x[t_counter] = x[t_counter] + t
+    end
+
+    println("New position:")
+    println(x)
+
   #End while loop
   end
 
