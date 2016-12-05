@@ -1,81 +1,55 @@
 using NLPModels
 using AmplNLReader
-using ForwardDiff
 
-c = 0                  #Number of constraints
-alpha = 0.5            #Feasibility distance tolerance
-beta = 0.1             #Vector length tolerance
+#Load AMPL Model based on filename
+model = AmplModel("basic_model.nl")
 
-function program(filename)
-  global c, alpha, beta
-  
-  #Load AMPL Model based on filename
-  m = AmplModel(filename)
+#Collecl Model Information
 
-  #Get number of constraints from Model
-  c = m.meta.ncon
+#Number of variables
+nvar = model.meta.nvar
 
-  #Starting point
-  x = [100.0, 100.0]
+#Lower Bound of all variables
+lvar = model.meta.lvar
 
-  y = 100.0
+#Upper Bound of all variables
+uvar = model.meta.uvar
 
-  #Set Counter to 0
-  i = 0
+#Lower Bound of all constraints
+lower = model.meta.lcon
 
-  #Iterating through 10 times for development
-  while i < 10
-    i = i + 1
+#Upper Bound of all constraints
+upper = model.meta.ucon
 
-    #Number of violated constraints for a given variable
-    n = Int64[m.meta.nvar]
-    
-    #Number of constraints violated
-    ninf = 0
+x1 = 100.0
 
-    #Constraint counter for looping all constraints
-    constraint_counter = 1
-    
-    #Loop each constraints
-    for c in cons(m, x)
+x2 = 100.0
 
-      constraint_violated = false
-      d = 1
-      violation = 0
+#Starting point
+x = [x1, x2]
 
-      #If upper bound constraint is violated
-      if c > m.meta.ucon[constraint_counter]
+function p(model)
 
-        constraint_violated = true
-        d = -1
-        violation = c - m.meta.ucon[constraint_counter]
-        println("Constraint $constraint_counter upper bound was violated ($c)")
-        z = y
-        y = y / 5
-        x = [z,y]
-      else
-        println("Constraint $constraint_counter upper bound was not violated ($c)")
-
+  NLPModel.cons(model, [x1, x2]) 
+  a = 0
+  while a < 10
+    a = a + 1
+    for (i in lower)
+      if(i > 0)
+        print("This lower constraint is violated.")
+        x3 = x1 / 5
+        x1 = x1 - x3
+        x = [x1, x2]
       end
 
-      if c < m.meta.lcon[constraint_counter]
-
-        violation = m.mSharedVectoreta.lcon[constraint_counter] - c
-        constraint_violated = true
-        println("Constraint $constraint_counter lower bound was violated ($c)")
-        z = y
-        y = (y/5)
-        x = [y,z]
-
-      else
-
-        println("Constraint $constraint_counter lower bound was not violated ($c)")
-
-      end
-    end
+      for (j in upper)
+        if(i < 0)
+          print("This upper constraint is violated.")
+          x3 = x1 / 5
+          x2 = x2 - x3
+          x = [x1, x2]
+        end
   end
-      
-
 
       
 
