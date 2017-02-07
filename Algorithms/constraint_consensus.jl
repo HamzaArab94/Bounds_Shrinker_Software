@@ -26,19 +26,19 @@ function run(filename)
     i = i + 1
 
     #Number of violated constraints for a given variable
-    n = Int64[m.meta.nvar]
+    n = Array{Int64}(m.meta.nvar)
 
     #Our component vector for single constraint
-    f_vector = Float64[m.meta.nvar]
+    f_vector = Array{Float64}(m.meta.nvar)
 
     #Sum of component vectors for the variable over the feasibility vectors for all violated constraints
-    s_vector = Float64[m.meta.nvar]
+    s_vector = Array{Float64}(m.meta.nvar)
 
     #Number of constraints violated
     ninf = 0
 
     #Consensus vectors
-    t_vector = Float64[m.meta.nvar]
+    t_vector = Array{Float64}(m.meta.nvar)
 
     #Constraint counter for looping all constraints
     constraint_counter = 1
@@ -83,17 +83,15 @@ function run(filename)
           println("Constraint violation is $violation")
 
           #Calculate gradient
-          #==
-          THIS DOES NOT WORK, WE NEED THE GRADIENT OF CONSTRAINT NOT OF THE
-          ENTIRE MODEL, NOT SURE HOW TO DO THIS CURRENTLY
-          ==#
-          gradient = grad(m, x)
+          c_grad = jth_congrad(m, x, constraint_counter)
+
+          println("Gradient is $c_grad")
 
           #Feasibility vector calculation bottom value
           gradient_vector_squared_sum = 0
 
           #Get sum of each variables gradient vector squared
-          for a in gradient
+          for a in c_grad
             gradient_vector_squared_sum = gradient_vector_squared_sum + a ^ 2
           end
 
@@ -103,8 +101,15 @@ function run(filename)
           #Set each component of feasibility vector
           for x_value in x
 
-            #Feasibility vector calculation based on gradient, violation and direction
-            f_vector[x_counter] = (violation * d * gradient[x_counter]) / gradient_vector_squared_sum
+            if c_grad[x_counter] != 0
+
+              #Feasibility vector calculation based on gradient, violation and direction
+              f_vector[x_counter] = (violation * d * c_grad[x_counter]) / gradient_vector_squared_sum
+
+              #Increment count for variable being present in constraint violation
+              n[x_counter] = n[x_counter] + 1
+
+            end
 
             #Continue to next variable
             x_counter = x_counter + 1
@@ -140,10 +145,11 @@ function run(filename)
             f_counter = 1
             for f in f_vector
               s_vector[f_counter] = s_vector[f_counter] + f
+              f_counter = f_counter + 1
             end
 
             println("Sum of feasibility vectors from violated constraints is:")
-            println(s)
+            println(s_vector)
 
           #Feasibility distance less than alpha
           else
@@ -178,6 +184,7 @@ function run(filename)
     s_counter = 1
     for s in s_vector
       t_vector[s_counter] = s / n[s_counter]
+      s_counter = s_counter + 1
     end
 
     println("Consensus vector calculated as:")
@@ -199,6 +206,7 @@ function run(filename)
     t_counter = 1
     for t in t_vector
       x[t_counter] = x[t_counter] + t
+      t_counter = t_counter + 1
     end
 
     println("New position:")
