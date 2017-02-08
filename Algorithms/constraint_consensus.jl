@@ -2,27 +2,140 @@ using NLPModels
 using AmplNLReader
 using ForwardDiff
 
-c = 0           #Number of constraints
-alpha = 0.5     #Feasibility distance tolerance
-beta = 0.1      #Vector length tolerance
+alpha = 0.5             #Feasibility distance tolerance
+beta = 0.1              #Vector length tolerance
+max_iterations = 100    #Maximum number of constraint consensus
+infinity_val = 1000000  #Value to replace infinity with on bounds
+points_to_generate = 10 #Number of random points to generate
+mutex = RemoteChannel() #For mutex
+new_bounds = Array{Float64}
 
+#=
+Attempts to shrink the bounds on the given NLP by randomly generating
+points on the upper bound, lower bound, and randomly interim for each
+dimension and applying the constraint consensus method to each point.
+=#
 function run(filename)
-  global c, alpha, beta
+  global c, points_to_generate, new_bounds
 
   #Load AMPL model based on filename
   m = AmplModel(filename)
 
-  #Get number of constraints from model
-  c = m.meta.ncon
+  #Generate random points
+  random_points = generate(m, points_to_generate)
 
-  #Starting point
-  x = [10.0, 10.0]
+  #Array for shrunked bounds
+  new_bounds = Array{Float64}(m.meta.nvar, 2)
+
+  #For each random point generated
+  @sync @parallel for x in random_points
+
+    #Move point x closer to the feasible region using constraint consensus
+    move(m, x)
+
+  end
+
+  println(new_bounds)
+
+end
+
+#=
+Generates random points on the upper bound, lower bound, and
+randomly interim for each dimension
+=#
+function generate(m, to_generate)
+  global infinity_val
+
+  #Array of random points to return
+  random_points = Array{Array{Float64}}(to_generate)
+
+  #Counter for random points generated
+  p_count = 1
+
+  #For each random point to generate
+  while p_count <= to_generate
+
+    #Initialize random point
+    p = Float64[]
+
+    #Counter for dimension loop
+    d_count = 1
+
+    #For each dimension
+    while d_count <= m.meta.nvar
+
+      #Generate a random number
+      random_num = rand(1:3)
+
+      #Lower bound as integer
+      lower_bound_int = floor(m.meta.lvar[d_count])
+
+      #If negative infinity use infinity value
+      if lower_bound_int == -Inf
+        lower_bound_int = -infinity_val
+      end
+
+      #Upper bound as integer
+      upper_bound_int = ceil(m.meta.uvar[d_count])
+
+      #If infinity use infinity value
+      if upper_bound_int == Inf
+        upper_bound_int = infinity_val
+      end
+
+      #If 1 then place on upper bound of dimension
+      if random_num == 1
+
+        #Assign value to point for dimension
+        push!(p, upper_bound_int)
+
+      #If 2 then place on lower bound of dimension
+      elseif random_num == 2
+
+          #Assign value to point for dimension
+          push!(p, lower_bound_int)
+
+      #If 3/otherwise we place randomly interim
+      else
+
+        #Generate randomly between upper and lower
+        randomly_interim = rand(lower_bound_int:upper_bound_int)
+
+        #Assign value to point for dimension
+        push!(p, randomly_interim)
+
+      end
+
+      #Increment dimension counter
+      d_count = d_count + 1
+
+    end
+
+    #Add point to array to return
+    random_points[p_count] = p
+
+    #Increment point counter
+    p_count = p_count + 1
+
+  end
+
+  #Return our array of random points
+  return random_points
+
+end
+
+#=
+Moves a given point x closer to the feasible region using the constraint
+consensus method.
+=#
+function move(m, x)
+  global c, alpha, beta, max_iterations
 
   #Set counter to 0
   i = 0
 
   #Maximum number of iterations is 10 for development
-  while i < 10
+  while i < max_iterations
     i = i + 1
 
     #Number of violated constraints for a given variable
@@ -175,7 +288,7 @@ function run(filename)
     #If no constraints violated
     if ninf == 0
 
-      println("No constraints violated! Exiting.")
+      println("No constraints violated or feasibility distance too small, exiting.")
       break;
 
     end
@@ -211,8 +324,94 @@ function run(filename)
 
     println("New position:")
     println(x)
+    println("")
+    println("")
 
   #End while loop
   end
+
+  println("about to shrink")
+
+  #Attempt to shrink variable bounds based on new point
+  shrink(x)
+
+end
+
+#=
+Attempts to shrink the bounds on a variable range given a point
+=#
+function shrink(x)
+  global new_bounds
+
+  println("Trying to shrink...")
+
+  #Attempt to get a lock on new variable bounds
+  put!(mutex, true)
+
+  println("Got lock on shrink")
+
+  #Counter for dimensions
+  counter = 1
+
+  #For each dimension of the point
+  for x_var in x
+
+    #If lower bound is set
+    if isdefined(new_bounds, counter, 1)
+
+      #If point has value less than current minimum value
+      if x_var < new_bounds[counter, 1]
+
+        old_value = new_bounds[counter, 1]
+
+        println("Lower bound set for dimension $counter, old value is $old_value, new value is $x_var")
+
+        #Set the new lower bound to this points value
+        new_bounds[counter, 1] = x_var
+
+      end
+
+    #Automatically the smallest point so far for this dimension
+    else
+
+      println("No upper bound set for dimension $counter, new value is $x_var")
+
+      #Set the upper bound to this points value
+      new_bounds[counter, 1] = x_var
+
+    end
+
+    #If upper bound is set
+    if isdefined(new_bounds, counter, 2)
+
+      #If point has value greater than current maximum value
+      if x_var > new_bounds[counter, 2]
+
+        old_value = new_bounds[counter, 2]
+
+        println("Upper bound set for dimension $counter, old value is $old_value, new value is $x_var")
+
+        #Set the new lower bound to this points value
+        new_bounds[counter, 2] = x_var
+
+      end
+
+    #Automatically the smallest point so far for this dimension
+    else
+
+      println("Upper bound set for dimension $counter, new value is $x_var")
+
+      #Set the lower bound to this points value
+      new_bounds[counter, 2] = x_var
+
+    end
+
+    #Increment dimension counter
+    counter = counter + 1
+
+  end
+
+  #Release lock
+  take!(mutex)
 
 end
