@@ -5,6 +5,7 @@ using AmplNLReader,Gtk.ShortNames
 numUnboundedU = (1*10)^20
 numUnboundedL = -(1*10)^20
 
+#Prints the current bounds of all variables
 function PrintCurrentBounds(nvar,lBOUND,uBOUND)
   for i = 1:nvar
     lbound = lBOUND[i]
@@ -13,15 +14,16 @@ function PrintCurrentBounds(nvar,lBOUND,uBOUND)
   end
 end
 
+#Check if the inequality is satisfied
 function satisfiesInequalityConstraint(value,z,upper,lower)
   return (value[z] >= lower[z] && value[z] <= upper[z])
 end
 
+#Check for greater than less than or equal to of equality constraint
 function checkEqualityConstraint(econ,equalityConstraint)
   if(length(econ) > 0)
     for i in econ
       if !((equalityConstraint[i][1] && equalityConstraint[i][2]) || equalityConstraint[i][3])
-        print("An equality Constraint was not satisfied")
         return true
       end
     end
@@ -29,6 +31,7 @@ function checkEqualityConstraint(econ,equalityConstraint)
   return false
 end
 
+#Generate Sampling Points
 function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
   SamplingPoints = Any[]
   for i = 1: numOfPoints
@@ -42,6 +45,7 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
   return SamplingPoints
 end
 
+#Scale the Box in powers of 10
 function ScaleBox(lowerBound,upperBound,both,lvar,uvar,scaleFactor)
   for k in lowerBound
     lvar[k] = lvar[k] * scaleFactor
@@ -55,6 +59,7 @@ function ScaleBox(lowerBound,upperBound,both,lvar,uvar,scaleFactor)
   end
 end
 
+#Used to go to the last accepted nucleus box
 function reduceScale(lowerBound,upperBound,both,lvar,uvar,scaleFactor)
   for k in lowerBound
     lvar[k] = lvar[k] / scaleFactor
@@ -68,6 +73,7 @@ function reduceScale(lowerBound,upperBound,both,lvar,uvar,scaleFactor)
   end
 end
 
+#Create a bit array for equality constraints
 function cBitArray(numOfConst)
   econstraints = Any[]
   for i = 1 : numOfConst
@@ -77,6 +83,7 @@ function cBitArray(numOfConst)
 end
 
 function GetANucleus(model)
+
   # Collect Model Information
   nvar = model.meta.nvar
   lvar = model.meta.lvar
@@ -85,18 +92,21 @@ function GetANucleus(model)
   upper = model.meta.ucon
   econ = model.meta.jfix
   icon = model.meta.ncon
-
+  #Check if the model is unconstrained
   if(length(lower) == 0 && length(upper) == 0)
     println("No Constraints, Infinite FR ")
     return
   end
-
+  #Check if the model has equality constraints
   if(length(econ) > 0)
-    println("This model has equality constraints")
+    println("This model has equality constraints\n")
   end
 
+  #Show original bounds
   println("Original Bounds Are:")
   PrintCurrentBounds(nvar,lvar,uvar)
+
+  #Initialize Nucleus
   scaleLower = Any[]
   scaleUpper = Any[]
   scaleBoth = Any[]
@@ -114,14 +124,16 @@ function GetANucleus(model)
       end
   end
 
+  #Check if there are no unbounded variables in the model
   if(length(scaleLower) == 0 && length(scaleUpper) == 0 && length(scaleBoth) == 0)
-    print("No unbounded variables in model")
+    print("No unbounded variables in model\n")
     return
   end
 
   scaleFactor = 1
   complete = false
   while(!complete)
+    #Sample the Nucleus Box
     println("Sampling Box is now:")
     PrintCurrentBounds(nvar,lvar,uvar)
     samplingPoints = GenerateSamplingPoints(100,nvar,lvar,uvar)
@@ -129,13 +141,14 @@ function GetANucleus(model)
     infeasiblePoints = Any[]
     equalityConstraint = cBitArray(icon)
     for point in samplingPoints
+      #Get the functional value of all constraints given the point
       value= NLPModels.cons(model,point)
       for z = 1 : length(value)
-        if findfirst(econ,z) <= 0
-          if !(satisfiesInequalityConstraint(value,z,upper,lower))
+        if findfirst(econ,z) <= 0 #Check if the constraint is an equality
+          if !(satisfiesInequalityConstraint(value,z,upper,lower)) #Handle Inequality Constraint
             push!(infeasiblePoints,point)
           end
-        else
+          else # Handle equality Constraint
           if(value[z] > lower[z])
             equalityConstraint[z][1] = true
           elseif(value[z] < upper[z])
@@ -146,12 +159,14 @@ function GetANucleus(model)
         end
       end
     end
+    
+    #If the current Nucleus box cannot be accepted, rollback
     if(checkEqualityConstraint(econ,equalityConstraint) || (length(infeasiblePoints)!= 0))
       complete  = true
       println("\nA Constraint was Violated\nGetting last best box\nBounds Tightened to (inclusive)")
       reduceScale(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
       PrintCurrentBounds(nvar,lvar,uvar)
-    else
+      else # Nucleus Box can be scaled further
       scaleFactor = scaleFactor * 10
       println("\nNo constraints Violated\nScaling Box...")
       ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
@@ -159,6 +174,14 @@ function GetANucleus(model)
   end
 end
 
+#Used to run a batch of test models
+#FileList = readdir(pwd()*"/CuteSet")
+#for file in FileList
+  #print(file * "\n")
+  #Bounds = GetANucleus(AmplModel(pwd()*"/CuteSet/"file))
+#end
+
+#File Dialog to select a test model
 File = open_dialog("Choose a model",Null(),("*.nl",@FileFilter("*.nl",name="All supported formats")))
 if(length(File) > 0)
   println("Chose:" * File)
