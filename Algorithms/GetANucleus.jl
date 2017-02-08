@@ -136,19 +136,18 @@ function GetANucleus(model)
     #Sample the Nucleus Box
     println("Sampling Box is now:")
     PrintCurrentBounds(nvar,lvar,uvar)
-    samplingPoints = GenerateSamplingPoints(100,nvar,lvar,uvar)
+    samplingPoints = GenerateSamplingPoints((scaleFactor+10),nvar,lvar,uvar)
     println("Sampling....")
     infeasiblePoints = Any[]
     equalityConstraint = cBitArray(icon)
     for point in samplingPoints
-      #Get the functional value of all constraints given the point
       value= NLPModels.cons(model,point)
       for z = 1 : length(value)
-        if findfirst(econ,z) <= 0 #Check if the constraint is an equality
-          if !(satisfiesInequalityConstraint(value,z,upper,lower)) #Handle Inequality Constraint
+        if findfirst(econ,z) <= 0
+          if !(satisfiesInequalityConstraint(value,z,upper,lower))
             push!(infeasiblePoints,point)
           end
-          else # Handle equality Constraint
+        else
           if(value[z] > lower[z])
             equalityConstraint[z][1] = true
           elseif(value[z] < upper[z])
@@ -159,14 +158,13 @@ function GetANucleus(model)
         end
       end
     end
-    
-    #If the current Nucleus box cannot be accepted, rollback
+    #If a constraint was violated somehow
     if(checkEqualityConstraint(econ,equalityConstraint) || (length(infeasiblePoints)!= 0))
       complete  = true
-      println("\nA Constraint was Violated\nGetting last best box\nBounds Tightened to (inclusive)")
+      println("\nA Constraint was Violated\nRolling Back\nBounds Tightened to (inclusive)")
       reduceScale(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
       PrintCurrentBounds(nvar,lvar,uvar)
-      else # Nucleus Box can be scaled further
+    else # No constraints violated, scale the box
       scaleFactor = scaleFactor * 10
       println("\nNo constraints Violated\nScaling Box...")
       ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
