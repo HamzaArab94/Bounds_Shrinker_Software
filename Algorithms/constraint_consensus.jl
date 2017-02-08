@@ -6,9 +6,10 @@ alpha = 0.5             #Feasibility distance tolerance
 beta = 0.1              #Vector length tolerance
 max_iterations = 100    #Maximum number of constraint consensus
 infinity_val = 1000000  #Value to replace infinity with on bounds
-points_to_generate = 10 #Number of random points to generate
+points_to_generate = 4  #Number of random points to generate
 mutex = RemoteChannel() #For mutex
 new_bounds = Array{Float64}
+
 
 #=
 Attempts to shrink the bounds on the given NLP by randomly generating
@@ -27,6 +28,14 @@ function run(filename)
   #Array for shrunked bounds
   new_bounds = Array{Float64}(m.meta.nvar, 2)
 
+  #Save current bounds in new bounds
+  counter = 1
+  while counter <= m.meta.nvar
+    new_bounds[counter, 1] = m.meta.lvar[counter]
+    new_bounds[counter, 2] = m.meta.lvar[counter]
+    counter = counter + 1
+  end
+
   #For each random point generated
   @sync @parallel for x in random_points
 
@@ -36,6 +45,9 @@ function run(filename)
   end
 
   println(new_bounds)
+
+  #Return the shrunken bounds
+  return new_bounds
 
 end
 
@@ -169,11 +181,11 @@ function move(m, x)
         constraint_violated = true
         d = -1
         violation = c - m.meta.ucon[constraint_counter]
-        println("Constraint $constraint_counter upper bound was violated ($c)")
+        println("($(myid())) Constraint $constraint_counter upper bound was violated ($c)")
 
       else
 
-        println("Constraint $constraint_counter uper bound  not violated ($c)")
+        println("($(myid())) Constraint $constraint_counter uper bound  not violated ($c)")
 
       end
 
@@ -182,23 +194,23 @@ function move(m, x)
 
         violation = m.mSharedVectoreta.lcon[constraint_counter] - c
         constraint_violated = true
-        println("Constraint $constraint_counter lower bound was violated ($c)")
+        println("($(myid())) Constraint $constraint_counter lower bound was violated ($c)")
 
       else
 
-        println("Constraint $constraint_counter lower bound not violated ($c)")
+        println("($(myid())) Constraint $constraint_counter lower bound not violated ($c)")
 
       end
 
       #If upper or lower bound was violated
       if constraint_violated
 
-          println("Constraint violation is $violation")
+          println("($(myid())) Constraint violation is $violation")
 
           #Calculate gradient
           c_grad = jth_congrad(m, x, constraint_counter)
 
-          println("Gradient is $c_grad")
+          println("($(myid())) Gradient is $c_grad")
 
           #Feasibility vector calculation bottom value
           gradient_vector_squared_sum = 0
@@ -238,17 +250,17 @@ function move(m, x)
           #Distance is root of sum of each length squared
           distance = sqrt(distance_sum)
 
-          println("The distance of the component vector is $distance")
+          println("($(myid())) The distance of the component vector is $distance")
 
           #If feasibility distance greater than alpha
           if distance > alpha
 
-            println("Feasibility distance is greater than alpha")
+            println("($(myid())) Feasibility distance is greater than alpha")
 
             #Increment the number of constraints violated
             ninf = ninf + 1
 
-            println("Number of constraints violated is now $ninf")
+            println("($(myid())) Number of constraints violated is now $ninf")
             #==
             NEED TO FIGURE OUT HOW TO DETERMINE WHICH VARIABLES INVOLVED IN
             CONSTRAINT VIOLATION
@@ -261,20 +273,20 @@ function move(m, x)
               f_counter = f_counter + 1
             end
 
-            println("Sum of feasibility vectors from violated constraints is:")
+            println("($(myid())) Sum of feasibility vectors from violated constraints is:")
             println(s_vector)
 
           #Feasibility distance less than alpha
           else
 
-            println("Feasibility distance is too small, ignoring this.")
+            println("($(myid())) Feasibility distance is too small, ignoring this.")
 
           end
 
       #If constraint not violated
       else
 
-        println("Constraint $constraint_counter was not violated")
+        println("($(myid())) Constraint $constraint_counter was not violated")
 
       #End if constraint violated
       end
@@ -288,7 +300,7 @@ function move(m, x)
     #If no constraints violated
     if ninf == 0
 
-      println("No constraints violated or feasibility distance too small, exiting.")
+      println("($(myid())) No constraints violated or feasibility distance too small, exiting.")
       break;
 
     end
@@ -300,7 +312,7 @@ function move(m, x)
       s_counter = s_counter + 1
     end
 
-    println("Consensus vector calculated as:")
+    println("($(myid())) Consensus vector calculated as:")
     println(t_vector)
 
     #Calculate length of consensus vector
@@ -312,7 +324,7 @@ function move(m, x)
 
     #If the length of the consensus vector is too short exit unsuccessfully
     if t_vector_length < beta
-      println("Length of consensus vector is too short, exiting unsuccssfully")
+      println("($(myid())) Length of consensus vector is too short, exiting unsuccssfully")
     end
 
     #Move to new position and repeat
@@ -322,7 +334,7 @@ function move(m, x)
       t_counter = t_counter + 1
     end
 
-    println("New position:")
+    println("($(myid())) New position:")
     println(x)
     println("")
     println("")
@@ -330,7 +342,7 @@ function move(m, x)
   #End while loop
   end
 
-  println("about to shrink")
+  println("($(myid())) about to shrink")
 
   #Attempt to shrink variable bounds based on new point
   shrink(x)
@@ -343,12 +355,12 @@ Attempts to shrink the bounds on a variable range given a point
 function shrink(x)
   global new_bounds
 
-  println("Trying to shrink...")
+  println("($(myid())) Trying to shrink...")
 
   #Attempt to get a lock on new variable bounds
   put!(mutex, true)
 
-  println("Got lock on shrink")
+  println("($(myid())) Got lock on shrink")
 
   #Counter for dimensions
   counter = 1
@@ -364,7 +376,7 @@ function shrink(x)
 
         old_value = new_bounds[counter, 1]
 
-        println("Lower bound set for dimension $counter, old value is $old_value, new value is $x_var")
+        println("($(myid())) Lower bound set for dimension $counter, old value is $old_value, new value is $x_var")
 
         #Set the new lower bound to this points value
         new_bounds[counter, 1] = x_var
@@ -374,7 +386,7 @@ function shrink(x)
     #Automatically the smallest point so far for this dimension
     else
 
-      println("No upper bound set for dimension $counter, new value is $x_var")
+      println("($(myid())) No upper bound set for dimension $counter, new value is $x_var")
 
       #Set the upper bound to this points value
       new_bounds[counter, 1] = x_var
@@ -389,7 +401,7 @@ function shrink(x)
 
         old_value = new_bounds[counter, 2]
 
-        println("Upper bound set for dimension $counter, old value is $old_value, new value is $x_var")
+        println("($(myid())) Upper bound set for dimension $counter, old value is $old_value, new value is $x_var")
 
         #Set the new lower bound to this points value
         new_bounds[counter, 2] = x_var
@@ -399,7 +411,7 @@ function shrink(x)
     #Automatically the smallest point so far for this dimension
     else
 
-      println("Upper bound set for dimension $counter, new value is $x_var")
+      println("($(myid())) Upper bound set for dimension $counter, new value is $x_var")
 
       #Set the lower bound to this points value
       new_bounds[counter, 2] = x_var
