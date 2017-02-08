@@ -25,10 +25,8 @@ function checkEqualityConstraint(econ,equalityConstraint)
         return true
       end
     end
-    return false
-  else
-    return false
   end
+  return false
 end
 
 function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
