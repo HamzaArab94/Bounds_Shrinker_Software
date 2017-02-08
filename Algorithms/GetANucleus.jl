@@ -114,7 +114,7 @@ function GetANucleus(model)
       end
   end
 
-  if(length(scaleLower == 0) && length(scaleUpper) == 0 && length(scaleBoth) == 0)
+  if(length(scaleLower) == 0 && length(scaleUpper) == 0 && length(scaleBoth) == 0)
     print("No unbounded variables in model")
     return
   end
