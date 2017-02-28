@@ -9,7 +9,7 @@ new_bounds = Array{Float64}
 Attempts to shrink the bounds on the given NLP by using IPOPT
 external solver
 =#
-function run2(filename)
+function shrink_bounds(filename)
   global m, current_var_index
 
   #Load AMPL model based on filename
