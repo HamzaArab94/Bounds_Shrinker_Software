@@ -92,3 +92,4 @@ PrintBounds(nvar, lvar, uvar)
 cut = Cut(nvar, lvar, uvar)
 # println("The value of the cut is now " * string(cut) * "\n");
 GenerateSamplingPoints(10, nvar, lvar, uvar, cut)
+
