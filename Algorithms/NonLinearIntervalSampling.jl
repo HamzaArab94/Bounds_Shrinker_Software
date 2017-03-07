@@ -1,12 +1,10 @@
 #http://www.sce.carleton.ca/faculty/chinneck/MProbe/MProbePaper2.pdf
+
+
 using AmplNLReader,Gtk.ShortNames
 
-#Numerical Unbounded Constant
-numUnboundedU = (1*10)^20
-numUnboundedL = -(1*10)^20
-
-
-function PrintCurrentBounds(nvar,lBOUND,uBOUND)
+#Print the Current Bounds of the Model
+function PrintCurrentBounds(nvar::Int,lBOUND::Array,uBOUND::Array)
   for i = 1:nvar
     lbound = lBOUND[i]
     ubound = uBOUND[i]
@@ -14,19 +12,23 @@ function PrintCurrentBounds(nvar,lBOUND,uBOUND)
   end
 end
 
-function satisfiesInequalityConstraint(value,z,upper,lower)
+#Determine if the point is feasible for the inequality constraint
+function satisfiesInequalityConstraint(value::Array,z::Int,upper::Array,lower::Array)
   return (value[z] >= lower[z] && value[z] <= upper[z])
 end
 
-function satisfiesEqualityLTConstraint(value,z,upper)
+#Determine less than equality for a point
+function satisfiesEqualityLTConstraint(value::Array,z::Int,upper::Array)
   return (value[z] <= upper[z])
 end
 
-function satisfiesEqualityGTConstraint(value,z,lower)
+#Determine greater than equality for a point
+function satisfiesEqualityGTConstraint(value::Array,z::Int,lower::Array)
   return (value[z] >= lower[z])
 end
 
-function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
+#Genererate sample points within the given lvar->uvar range
+function GenerateSamplingPoints(numOfPoints::Int,nvar::Int,lvar::Array,uvar::Array,numUnboundedL,numUnboundedU)
   SamplingPoints = Any[]
   for i = 1: numOfPoints
     arr_Point = Float64[]
@@ -34,10 +36,10 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
       lower = lvar[j]
       upper = uvar[j]
       if(lower <= numUnboundedL)
-        lower = -7766279631452241920
+        lower = numUnboundedL
       end
       if(upper >= numUnboundedU)
-        upper = 7766279631452241920
+        upper = numUnboundedU
       end
       point = rand(lower:upper)
       push!(arr_Point,point)
@@ -47,7 +49,8 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
   return SamplingPoints
 end
 
-function findMaxMinPairInequality(nvar,INEQ_feasiblePoints)
+#Find the (min,max) pairs for the inequality constraints
+function findMaxMinPairInequality(nvar::Int,INEQ_feasiblePoints::Array)
   minmax = Any[]
   for i = 1 : nvar
     temp = Any[]
@@ -59,7 +62,8 @@ function findMaxMinPairInequality(nvar,INEQ_feasiblePoints)
   return minmax
 end
 
-function findMaxMinPairEquality(nvar,LTEQ_feasiblePoints,GTEQ_feasiblePoints)
+#Find the (min,max) pairs for equality constraints
+function findMaxMinPairEquality(nvar::Int,LTEQ_feasiblePoints::Array,GTEQ_feasiblePoints::Array)
   minmax = Any[]
   for i = 1 : nvar
     temp = Any[]
@@ -78,13 +82,9 @@ function findMaxMinPairEquality(nvar,LTEQ_feasiblePoints,GTEQ_feasiblePoints)
   return minmax
 end
 
-function printArray(array)
-  for item in array
-    println(item)
-  end
-end
-
-function tightenBounds(INEQ_minmax,EQ_minmax,lvar,uvar,nvar)
+#Tighten the bounds based on the (min,max) pairs.
+#Makes sure that gaps between the min max are filled
+function tightenBounds(INEQ_minmax::Array,EQ_minmax::Array,lvar::Array,uvar::Array,nvar::Int)
   for i = 1 : nvar
     temp = Any[]
     for j = 1 : 2
@@ -100,7 +100,8 @@ function tightenBounds(INEQ_minmax,EQ_minmax,lvar,uvar,nvar)
   end
 end
 
-function NonLinearIntervalSampling(model)
+#Perform the Non Linear Interval Sampling Algorithm
+function NonLinearIntervalSampling(model::AmplModel,numUnboundedU,numUnboundedL)
 
   # Collect Model Information
   nvar = model.meta.nvar
@@ -110,6 +111,7 @@ function NonLinearIntervalSampling(model)
   upper = model.meta.ucon
   econ = model.meta.jfix
   ncon = model.meta.ncon
+
 
   println("Current Bounds Are:")
   PrintCurrentBounds(nvar,lvar,uvar)
@@ -123,7 +125,7 @@ function NonLinearIntervalSampling(model)
   #For Each Constraint
   for i = 1 : ncon
     #Generate Sampling Points
-    SamplingPoints = GenerateSamplingPoints(5,nvar,lvar,uvar)
+    SamplingPoints = GenerateSamplingPoints(5,nvar,lvar,uvar,numUnboundedL,numUnboundedU)
     for point in SamplingPoints
       #Get the functional value
       values = NLPModels.cons(model,point)
@@ -158,13 +160,6 @@ function NonLinearIntervalSampling(model)
     PrintCurrentBounds(nvar,lvar,uvar)
  end
 
-#path = "/TestModels/Bounded/100To500VarsConstraints/"
-#Used to run a batch of test models
-#FileList = readdir(pwd()*path)
- #for file in FileList
-  #print(file * "\n")
-   #Bounds = NonLinearIntervalSampling(AmplModel(pwd()*path*file))
-#end
 
 #Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Bounded/100To500VarsConstraints/eigmaxb.nl"))
-#Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Bounded/TwoVariables/booth.nl"))
+#Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Unbounded/TwoVariables/booth.nl"),((1*10)^20),(-(1*10)^20))
