@@ -5,16 +5,6 @@ using AmplNLReader,Gtk.ShortNames
 numUnboundedU = (1*10)^20
 numUnboundedL = -(1*10)^20
 
-function CorrectUnboundedVariables(nvar,lBOUND,uBOUND)
-  for i = 1:nvar
-    if(lBOUND[i] <= numUnboundedL)
-      lBOUND[i] = (-(1*10)^20)
-    end
-    if(uBOUND[i] >= numUnboundedU)
-      uBOUND[i] =  ((1*10)^20)
-    end
-  end
-end
 
 function PrintCurrentBounds(nvar,lBOUND,uBOUND)
   for i = 1:nvar
@@ -120,8 +110,6 @@ function NonLinearIntervalSampling(model)
   upper = model.meta.ucon
   econ = model.meta.jfix
   ncon = model.meta.ncon
-
-  CorrectUnboundedVariables(nvar,lvar,uvar)
 
   println("Current Bounds Are:")
   PrintCurrentBounds(nvar,lvar,uvar)
