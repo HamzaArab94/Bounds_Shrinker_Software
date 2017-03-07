@@ -160,6 +160,3 @@ function NonLinearIntervalSampling(model::AmplModel,numUnboundedU,numUnboundedL)
     PrintCurrentBounds(nvar,lvar,uvar)
  end
 
-
-#Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Bounded/100To500VarsConstraints/eigmaxb.nl"))
-#Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Unbounded/TwoVariables/booth.nl"),((1*10)^20),(-(1*10)^20))
