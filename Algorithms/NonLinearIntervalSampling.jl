@@ -5,6 +5,17 @@ using AmplNLReader,Gtk.ShortNames
 numUnboundedU = (1*10)^20
 numUnboundedL = -(1*10)^20
 
+function CorrectUnboundedVariables(nvar,lBOUND,uBOUND)
+  for i = 1:nvar
+    if(lBOUND[i] <= numUnboundedL)
+      lBOUND[i] = (-(1*10)^20)
+    end
+    if(uBOUND[i] >= numUnboundedU)
+      uBOUND[i] =  ((1*10)^20)
+    end
+  end
+end
+
 function PrintCurrentBounds(nvar,lBOUND,uBOUND)
   for i = 1:nvar
     lbound = lBOUND[i]
@@ -30,7 +41,15 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
   for i = 1: numOfPoints
     arr_Point = Float64[]
     for j = 1: nvar
-      point = rand(lvar[j]:uvar[j])
+      lower = lvar[j]
+      upper = uvar[j]
+      if(lower <= numUnboundedL)
+        lower = -7766279631452241920
+      end
+      if(upper >= numUnboundedU)
+        upper = 7766279631452241920
+      end
+      point = rand(lower:upper)
       push!(arr_Point,point)
     end
     push!(SamplingPoints,arr_Point)
@@ -71,14 +90,14 @@ end
 
 function printArray(array)
   for item in array
-    println(array)
+    println(item)
   end
 end
 
 function tightenBounds(INEQ_minmax,EQ_minmax,lvar,uvar,nvar)
   for i = 1 : nvar
     temp = Any[]
-    for j = 1 : nvar
+    for j = 1 : 2
       if(length(INEQ_minmax) > 0)
         push!(temp,INEQ_minmax[i][j])
       end
@@ -101,6 +120,8 @@ function NonLinearIntervalSampling(model)
   upper = model.meta.ucon
   econ = model.meta.jfix
   ncon = model.meta.ncon
+
+  CorrectUnboundedVariables(nvar,lvar,uvar)
 
   println("Current Bounds Are:")
   PrintCurrentBounds(nvar,lvar,uvar)
@@ -132,6 +153,10 @@ function NonLinearIntervalSampling(model)
         end
       end
     end
+  end
+   if((length(INEQ_feasiblePoints) == 0) && (length(LTEQ_feasiblePoints) == 0 || length(GTEQ_feasiblePoints) == 0))
+      println("No feasible points found during sampling.")
+      return
    end
     #Find Minimum/Maximum Pair
     if(length(INEQ_feasiblePoints) > 0)
@@ -145,5 +170,13 @@ function NonLinearIntervalSampling(model)
     PrintCurrentBounds(nvar,lvar,uvar)
  end
 
+#path = "/TestModels/Bounded/100To500VarsConstraints/"
+#Used to run a batch of test models
+#FileList = readdir(pwd()*path)
+ #for file in FileList
+  #print(file * "\n")
+   #Bounds = NonLinearIntervalSampling(AmplModel(pwd()*path*file))
+#end
 
-Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Bounded/TwoVariables/zecevic4.nl"))
+#Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Bounded/100To500VarsConstraints/eigmaxb.nl"))
+#Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Bounded/TwoVariables/booth.nl"))
