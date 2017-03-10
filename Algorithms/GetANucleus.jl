@@ -1,10 +1,6 @@
 #http://www.sce.carleton.ca/faculty/chinneck/MProbe/MProbePaper2.pdf
 using AmplNLReader,Gtk.ShortNames
 
-#Numerical Unbounded Constant
-numUnboundedU = (1*10)^20
-numUnboundedL = -(1*10)^20
-
 #Prints the current bounds of all variables
 function PrintCurrentBounds(nvar,lBOUND,uBOUND)
   for i = 1:nvar
@@ -23,7 +19,7 @@ end
 function checkEqualityConstraint(econ,equalityConstraint)
   if(length(econ) > 0)
     for i in econ
-      if !((equalityConstraint[i][1] && equalityConstraint[i][2]) || equalityConstraint[i][3])
+      if((equalityConstraint[i][1] && equalityConstraint[i][2]) || equalityConstraint[i][3])
         return true
       end
     end
@@ -82,7 +78,13 @@ function cBitArray(numOfConst)
   return econstraints
 end
 
-function GetANucleus(model)
+function printArray(Array)
+  for item in Array
+    println(item)
+  end
+end
+
+function GetANucleus(model,numUnboundedL,numUnboundedU)
 
   # Collect Model Information
   nvar = model.meta.nvar
@@ -92,6 +94,7 @@ function GetANucleus(model)
   upper = model.meta.ucon
   econ = model.meta.jfix
   icon = model.meta.ncon
+
   #Check if the model is unconstrained
   if(length(lower) == 0 && length(upper) == 0)
     println("No Constraints, Infinite FR ")
@@ -116,7 +119,11 @@ function GetANucleus(model)
         uvar[i] = 1.0
         push!(scaleBoth,i)
       elseif(lvar[i]>= numUnboundedL && uvar[i] >= numUnboundedU)
-        uvar[i] = 1.0
+        if(lvar[i] > 1.0)
+          uvar[i] = lvar[i] + 1
+        else
+          uvar[i] = 1.0
+        end
         push!(scaleUpper,i)
       elseif(lvar[i] <= numUnboundedL && uvar[i] <= numUnboundedU)
         lvar[i] = -1.0
@@ -136,16 +143,20 @@ function GetANucleus(model)
     #Sample the Nucleus Box
     println("Sampling Box is now:")
     PrintCurrentBounds(nvar,lvar,uvar)
-    samplingPoints = GenerateSamplingPoints((scaleFactor+10),nvar,lvar,uvar)
+    samplingPoints = GenerateSamplingPoints(nvar,nvar,lvar,uvar)
     println("Sampling....")
-    infeasiblePoints = Any[]
+    feasiblePoints = Any[]
     equalityConstraint = cBitArray(icon)
     for point in samplingPoints
-      value= NLPModels.cons(model,point)
+      value= try
+        NLPModels.cons(model,point)
+      catch AmplException
+        continue
+      end
       for z = 1 : length(value)
         if findfirst(econ,z) <= 0
-          if !(satisfiesInequalityConstraint(value,z,upper,lower))
-            push!(infeasiblePoints,point)
+          if (satisfiesInequalityConstraint(value,z,upper,lower))
+            push!(feasiblePoints,point)
           end
         else
           if(value[z] > lower[z])
@@ -158,32 +169,23 @@ function GetANucleus(model)
         end
       end
     end
-    #If a constraint was violated somehow
-    if(checkEqualityConstraint(econ,equalityConstraint) || (length(infeasiblePoints)!= 0))
+    if(checkEqualityConstraint(econ,equalityConstraint) || (length(feasiblePoints) > 0))
+      scaleFactor = scaleFactor * 10
+      if(scaleFactor == 1000000)
+        println("\nCan be further scaled\nScaling Box...")
+        ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
+        println("@Infinity, cannot scale further")
+        PrintCurrentBounds(nvar,lvar,uvar)
+        return [lvar,uvar]
+      end
+      println("\nCan be further scaled\nScaling Box...")
+      ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
+    else
       complete  = true
-      println("\nA Constraint was Violated\nRolling Back\nBounds Tightened to (inclusive)")
+      println("no feasible points found going back to last box")
       reduceScale(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
       PrintCurrentBounds(nvar,lvar,uvar)
-    else # No constraints violated, scale the box
-      scaleFactor = scaleFactor * 10
-      println("\nNo constraints Violated\nScaling Box...")
-      ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
+      return [lvar,uvar]
     end
   end
-end
-
-#Used to run a batch of test models
-#FileList = readdir(pwd()*"/CuteSet")
-#for file in FileList
-  #print(file * "\n")
-  #Bounds = GetANucleus(AmplModel(pwd()*"/CuteSet/"file))
-#end
-
-#File Dialog to select a test model
-File = open_dialog("Choose a model",Null(),("*.nl",@FileFilter("*.nl",name="All supported formats")))
-if(length(File) > 0)
-  println("Chose:" * File)
-  Bounds = GetANucleus(AmplModel(File))
-else
-  println("No file chosen")
 end
