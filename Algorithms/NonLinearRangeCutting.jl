@@ -42,6 +42,45 @@ function Cut(number,lower, bound)
   return result
 end
 
+function satisfiesInequalityConstraint(value,z,upper,lower)
+  return (value[z] >= lower[z] && value[z] <= upper[z])
+end
+
+function satisfiesEqualityLTConstraint(value,z,upper)
+  return (value[z] <= upper[z])
+end
+
+function satisfiesEqualityGTConstraint(value,z,lower)
+  return (value[z] >= lower[z])
+end
+
+#Method to check each point and verify that it is not satisfied
+function CheckConstraints(ncon, Points)
+
+  #For Each Constraint
+  for i = 1 : ncon
+  #Generate Sampling Points
+    # SamplingPoints = GenerateSamplingPoints(10,nvar,lvar,cut)
+    for p in Points
+    #Get the functional value
+      values = NLPModels.cons(model,p)
+    #Equality Constraint
+      if findfirst(econ,i) > 0
+        if (satisfiesEqualityLTConstraint(values,i,upper))
+          push!(LTEQ_feasiblePoints,p)
+        elseif (satisfiesEqualityGTConstraint(values,i,lower))
+          push!(GTEQ_feasiblePoints,p)
+        end
+    #Inequality Constraint
+      else
+        if(satisfiesInequalityConstraint(values,i,upper,lower))
+          push!(INEQ_feasiblePoints,p)
+        end
+      end
+    end
+  end
+end
+
 #Method that samples points
 function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
   SamplingPoints = Any[]
@@ -82,7 +121,14 @@ upper = model.meta.ucon
   #Equality Constraints
 econ = model.meta.jfix
 
-Rounds = 10
+  #Number of Constraints
+ncon = model.meta.ncon
+
+LTEQ_feasiblePoints = Any[]
+GTEQ_feasiblePoints = Any[]
+INEQ_feasiblePoints = Any[]
+
+Rounds = 20
 # How to convert from Float to Int
 # x = convert(Int64, 1.0)
 
@@ -99,11 +145,10 @@ for i = 1:Rounds
   println("Bounds: -> [$a,$b,$c,$d]\n")
   cut = Cut(nvar, lvar, 1)
   println(cut)
-  # println(uvar)
   PrintBounds(nvar, lvar, uvar)
-  # println(cut)
-# println("The value of the cut is now " * string(cut) * "\n");
-  GenerateSamplingPoints(10, nvar, lvar, uvar)
+  Points = GenerateSamplingPoints(10, nvar, lvar, cut)
+  CheckConstraints(ncon, Points)
+  println(LTEQ_feasiblePoints)
+  println(GTEQ_feasiblePoints)
+  println(INEQ_feasiblePoints)
 end
-
-# rand(lower_bound_int:upper_bound_int)
