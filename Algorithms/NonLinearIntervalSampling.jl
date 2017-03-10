@@ -101,7 +101,7 @@ function tightenBounds(INEQ_minmax::Array,EQ_minmax::Array,lvar::Array,uvar::Arr
 end
 
 #Perform the Non Linear Interval Sampling Algorithm
-function NonLinearIntervalSampling(model::AmplModel,numUnboundedU,numUnboundedL)
+function NonLinearIntervalSampling(model::AmplModel,numUnboundedL,numUnboundedU)
 
   # Collect Model Information
   nvar = model.meta.nvar
@@ -111,7 +111,6 @@ function NonLinearIntervalSampling(model::AmplModel,numUnboundedU,numUnboundedL)
   upper = model.meta.ucon
   econ = model.meta.jfix
   ncon = model.meta.ncon
-
 
   println("Current Bounds Are:")
   PrintCurrentBounds(nvar,lvar,uvar)
@@ -125,10 +124,14 @@ function NonLinearIntervalSampling(model::AmplModel,numUnboundedU,numUnboundedL)
   #For Each Constraint
   for i = 1 : ncon
     #Generate Sampling Points
-    SamplingPoints = GenerateSamplingPoints(5,nvar,lvar,uvar,numUnboundedL,numUnboundedU)
+    SamplingPoints = GenerateSamplingPoints(nvar,nvar,lvar,uvar,numUnboundedL,numUnboundedU)
     for point in SamplingPoints
       #Get the functional value
-      values = NLPModels.cons(model,point)
+      values = try
+        NLPModels.cons(model,point)
+      catch AmplException
+        continue
+      end
       #Equality Constraint
       if findfirst(econ,i) > 0
         if (satisfiesEqualityLTConstraint(values,i,upper))
@@ -158,5 +161,9 @@ function NonLinearIntervalSampling(model::AmplModel,numUnboundedU,numUnboundedL)
     tightenBounds(INEQ_minmax,EQ_minmax,lvar,uvar,nvar)
     println("Tightened Bounds Are:")
     PrintCurrentBounds(nvar,lvar,uvar)
+    return [lvar,uvar]
  end
 
+
+#Bounds = NonLinearIntervalSampling(AmplModel("Models/Bounded/Level 1/TwoVariables/alsotame.nl"),(-(1*10)^20),((1*10)^20))
+#Bounds = NonLinearIntervalSampling(AmplModel("TestModels/Unbounded/TwoVariables/booth.nl"),((1*10)^20),(-(1*10)^20))
