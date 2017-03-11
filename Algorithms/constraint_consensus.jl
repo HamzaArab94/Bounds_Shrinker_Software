@@ -32,7 +32,7 @@ function shrink_bounds(filename)
   counter = 1
   while counter <= m.meta.nvar
     new_bounds[counter, 1] = m.meta.lvar[counter]
-    new_bounds[counter, 2] = m.meta.lvar[counter]
+    new_bounds[counter, 2] = m.meta.uvar[counter]
     counter = counter + 1
   end
 
