@@ -28,18 +28,56 @@ function PrintBounds(nvar,lBOUND,uBOUND)
 end
 
 #Perform cut
-function Cut(number,lower, bound)
-  lex = [];
-  result = [];
-  lex =  lower[bound] + 100
-  lower[bound] = lower[bound] + 100
-  lex = round(Int, lex)
-  lex = lex - 100
-  push!(result, lower[bound])
-  push!(result, lower[bound] - 100)
+function Cut(number,lower, bound, index)
+  if(index == 1)
+    lex = [];
+    result = [];
+    lex =  lower[bound] + 100
+    lower[bound] = lower[bound] + 100
+    lex = round(Int, lex)
+    lex = lex - 100
+    push!(result, lower[bound])
+    push!(result, lower[bound] - 100)
   # push!(result, lex - 100)
   # println(result)
-  return result
+    return result
+  elseif(index == 2)
+    lex = [];
+    result = [];
+    lex =  lower[bound+1] + 100
+    lower[bound+1] = lower[bound+1] + 100
+    lex = round(Int, lex)
+    lex = lex - 100
+    push!(result, lower[bound+1])
+    push!(result, lower[bound+1] - 100)
+  # push!(result, lex - 100)
+  # println(result)
+    return result
+  elseif(index == 3)
+    lex = [];
+    result = [];
+    lex =  upper[bound+1] - 100
+    upper[bound+1] = upper[bound] - 100
+    lex = round(Int, lex)
+    lex = lex + 100
+    push!(result, upper[bound])
+    push!(result, upper[bound] + 100)
+  # push!(result, lex - 100)
+  # println(result)
+    return result
+  elseif(index == 4)
+    lex = [];
+    result = [];
+    lex =  upper[bound+1] - 100
+    lower[bound+1] = upper[bound+1] - 100
+    lex = round(Int, lex)
+    lex = lex + 100
+    push!(result, upper[bound+1])
+    push!(result, upper[bound+1] + 100)
+  # push!(result, lex - 100)
+  # println(result)
+    return result
+  end
 end
 
 function satisfiesInequalityConstraint(value,z,upper,lower)
@@ -92,63 +130,71 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
     end
     push!(SamplingPoints,arr_Point)
   end
-  for k = 1: numOfPoints
-     p = SamplingPoints[k]
-     println("point" * string(k) * " -> $p\n")
-   end
+  # for k = 1: numOfPoints
+    #  p = SamplingPoints[k]
+     # println("point" * string(k) * " -> $p\n")
+   # end
   return SamplingPoints
 end
-
 
 #function NonLinearRangeCutting(model)
    #Model info
 
   #Number of variables
-nvar = model.meta.nvar
+  nvar = model.meta.nvar
 
   #Lower Bound of all variables
-lvar = model.meta.lvar
+  lvar = model.meta.lvar
 
   #Upper Bound of all variables
-uvar = model.meta.uvar
+  uvar = model.meta.uvar
 
   #Lower Bound of all constraints
-lower = model.meta.lcon
+  lower = model.meta.lcon
 
   #Upper Bound of all constraints
-upper = model.meta.ucon
+  upper = model.meta.ucon
 
   #Equality Constraints
-econ = model.meta.jfix
+  econ = model.meta.jfix
 
   #Number of Constraints
-ncon = model.meta.ncon
+  ncon = model.meta.ncon
 
-LTEQ_feasiblePoints = Any[]
-GTEQ_feasiblePoints = Any[]
-INEQ_feasiblePoints = Any[]
+  LTEQ_feasiblePoints = Any[]
+  GTEQ_feasiblePoints = Any[]
+  INEQ_feasiblePoints = Any[]
 
-Rounds = 20
+  Rounds = 12
+  b = 1
 # How to convert from Float to Int
 # x = convert(Int64, 1.0)
 
-println("Welcome to Non Linear Range Cutting Algorithm!\n")
-println("Beginning variable bounds\n")
-PrintBounds(nvar, lvar, uvar)
-
-for i = 1:Rounds
-  println("Round" * string(i) * "\n")
-  a = lvar[1]
-  b = lvar[2]
-  c = uvar[1]
-  d = uvar[2]
-  println("Bounds: -> [$a,$b,$c,$d]\n")
-  cut = Cut(nvar, lvar, 1)
-  println(cut)
+  println("Welcome to Non Linear Range Cutting Algorithm!\n")
+  println("Beginning variable bounds\n")
   PrintBounds(nvar, lvar, uvar)
-  Points = GenerateSamplingPoints(10, nvar, lvar, cut)
-  CheckConstraints(ncon, Points)
-  println(LTEQ_feasiblePoints)
-  println(GTEQ_feasiblePoints)
-  println(INEQ_feasiblePoints)
+
+  for i = 1:Rounds
+    println("Round" * string(i) * "\n")
+    # a = lvar[1]
+    # b = lvar[2]
+    # c = uvar[1]
+    # d = uvar[2]
+    # println("Bounds: -> [$a,$b,$c,$d]\n")
+    cut = Cut(nvar, lvar, 1, b)
+  # println(cut)
+    PrintBounds(nvar, lvar, uvar)
+    Points = GenerateSamplingPoints(1000, nvar, lvar, cut)
+    CheckConstraints(ncon, Points)
+    # if(!(empty!(LTEQ_feasiblePoints)) || (empty!(GTEQ_feasiblePoints)) || (empty!(ITEQ_feasiblePoints)))
+    # println(LTEQ_feasiblePoints)
+    # println(GTEQ_feasiblePoints)
+    # if(empty!(INEQ_feasiblePoints))
+    # println(INEQ_feasiblePoints)
+    if (length(INEQ_feasiblePoints) != 0)
+      b = b + 1
+    end
+  # end
 end
+# empty!(a)
+# rand(lower_bound_int:upper_bound_int)
