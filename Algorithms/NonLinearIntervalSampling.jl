@@ -130,7 +130,7 @@ module NonLinearIntervalSampling
     #For Each Constraint
     for i = 1 : ncon
       #Generate Sampling Points
-      SamplingPoints = GenerateSamplingPoints(nvar,nvar,lvar,uvar,numUnboundedL,numUnboundedU)
+      SamplingPoints = GenerateSamplingPoints(1000,nvar,lvar,uvar,numUnboundedL,numUnboundedU)
       for point in SamplingPoints
         #Get the functional value
         values = try
