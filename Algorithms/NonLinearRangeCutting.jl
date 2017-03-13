@@ -114,12 +114,12 @@ end
 
 #Method that samples points
 function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
+  # println(lvar)
+  # println(uvar)
   SamplingPoints = Any[]
   for i = 1: numOfPoints
     arr_Point = Float64[]
     for j = 1: nvar
-      println(lvar[j])
-      println(uvar[j])
       point = rand(lvar[j]:uvar[j])
       push!(arr_Point,point)
     end
@@ -160,7 +160,7 @@ end
   GTEQ_feasiblePoints = Any[]
   INEQ_feasiblePoints = Any[]
 
-  Rounds = 30
+  Rounds = 31
   b = 1
   count = 0
 
@@ -173,19 +173,16 @@ end
 
   for i = 1:Rounds
     println("Round" * string(i) * "\n")
-    println(b)
+    # println(b)
     cut = Cut(nvar, lvar, uvar, 1, b)
     PrintBounds(nvar, lvar, uvar)
-    if(b == 2)
-      Points = GenerateSamplingPoints(10, nvar, uvar, cut)
-    else
-      Points = GenerateSamplingPoints(10, nvar, lvar, cut)
-    end
+    Points = GenerateSamplingPoints(10, nvar, lvar, uvar)
+    # Points = GenerateSamplingPoints(10, nvar, lvar, uvar)
     CheckConstraints(ncon, Points)
-    println(LTEQ_feasiblePoints)
-    println(GTEQ_feasiblePoints)
+    # println(LTEQ_feasiblePoints)
+    # println(GTEQ_feasiblePoints)
     # if(empty!(INEQ_feasiblePoints))
-    println(INEQ_feasiblePoints)
+    # println(INEQ_feasiblePoints)
     if (count == 10)
       b = b + 1
       count = 0
@@ -193,5 +190,7 @@ end
     count = count + 1
   # end
 end
+println("Final variable bounds\n")
+PrintBounds(nvar, lvar, uvar)
 # empty!(a)
 # rand(lower_bound_int:upper_bound_int)
