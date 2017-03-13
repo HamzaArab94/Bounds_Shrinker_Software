@@ -57,12 +57,12 @@ function Cut(number,lower, upper, bound, index)
   elseif(index == 3)
     lex = [];
     result = [];
-    lex =  lower[2] + 90
-    lower[2] = lower[2] + 90
+    lex =  lower[bound + 1] + 90
+    lower[2] = lower[bound + 1] + 90
     lex = round(Int, lex)
     lex = lex - 90
-    push!(result, lower[2])
-    push!(result, lower[2] - 90)
+    push!(result, lower[bound + 1])
+    push!(result, lower[bound + 1] - 90)
   # push!(result, lex - 100)
   # println(result)
     return result
@@ -92,9 +92,9 @@ function CheckConstraints(ncon, Points)
     #Get the functional value
       values = try
         NLPModels.cons(model,p)
-      catch AmplException
-        continue
-      end
+        catch AmplException
+          continue
+        end
     #Equality Constraint
       if findfirst(econ,i) > 0
         if (satisfiesEqualityLTConstraint(values,i,upper))
@@ -118,6 +118,8 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
   for i = 1: numOfPoints
     arr_Point = Float64[]
     for j = 1: nvar
+      println(lvar[j])
+      println(uvar[j])
       point = rand(lvar[j]:uvar[j])
       push!(arr_Point,point)
     end
@@ -158,9 +160,10 @@ end
   GTEQ_feasiblePoints = Any[]
   INEQ_feasiblePoints = Any[]
 
-  Rounds = 40
+  Rounds = 30
   b = 1
   count = 0
+
 # How to convert from Float to Int
 # x = convert(Int64, 1.0)
 
@@ -169,15 +172,9 @@ end
   PrintBounds(nvar, lvar, uvar)
 
   for i = 1:Rounds
-    println(lvar[1])
-    println(lvar[2])
-    println(uvar[1])
-    println(uvar[2])
     println("Round" * string(i) * "\n")
     println(b)
     cut = Cut(nvar, lvar, uvar, 1, b)
-  # println("Do I get here?")
-  # println(cut)
     PrintBounds(nvar, lvar, uvar)
     if(b == 2)
       Points = GenerateSamplingPoints(10, nvar, uvar, cut)
