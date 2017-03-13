@@ -90,7 +90,11 @@ function CheckConstraints(ncon, Points)
     # SamplingPoints = GenerateSamplingPoints(10,nvar,lvar,cut)
     for p in Points
     #Get the functional value
-      values = NLPModels.cons(model,p)
+      values = try
+        NLPModels.cons(model,p)
+      catch AmplException
+        continue
+      end
     #Equality Constraint
       if findfirst(econ,i) > 0
         if (satisfiesEqualityLTConstraint(values,i,upper))
