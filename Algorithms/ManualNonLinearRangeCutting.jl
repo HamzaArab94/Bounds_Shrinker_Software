@@ -28,52 +28,41 @@ function PrintBounds(nvar,lBOUND,uBOUND)
 end
 
 #Perform cut
-function Cut(number,lower, bound, index)
+function Cut(number,lower, upper, bound, index)
   if(index == 1)
     lex = [];
     result = [];
-    lex =  lower[bound] + 100
-    lower[bound] = lower[bound] + 100
+    lex =  lower[bound] + 90
+    lower[bound] = lower[bound] + 90
     lex = round(Int, lex)
-    lex = lex - 100
+    lex = lex - 90
     push!(result, lower[bound])
-    push!(result, lower[bound] - 100)
+    push!(result, lower[bound] - 90)
   # push!(result, lex - 100)
   # println(result)
     return result
   elseif(index == 2)
+    # println("I am here")
     lex = [];
     result = [];
-    lex =  lower[bound+1] + 100
-    lower[bound+1] = lower[bound+1] + 100
+    lex =  upper[bound] - 90
+    upper[bound] = upper[bound] - 90
     lex = round(Int, lex)
-    lex = lex - 100
-    push!(result, lower[bound+1])
-    push!(result, lower[bound+1] - 100)
+    lex = lex + 90
+    push!(result, upper[bound])
+    push!(result, upper[bound] + 90)
   # push!(result, lex - 100)
   # println(result)
     return result
   elseif(index == 3)
     lex = [];
     result = [];
-    lex =  upper[bound+1] - 100
-    upper[bound+1] = upper[bound] - 100
+    lex =  lower[bound + 1] + 90
+    lower[2] = lower[bound + 1] + 90
     lex = round(Int, lex)
-    lex = lex + 100
-    push!(result, upper[bound])
-    push!(result, upper[bound] + 100)
-  # push!(result, lex - 100)
-  # println(result)
-    return result
-  elseif(index == 4)
-    lex = [];
-    result = [];
-    lex =  upper[bound+1] - 100
-    lower[bound+1] = upper[bound+1] - 100
-    lex = round(Int, lex)
-    lex = lex + 100
-    push!(result, upper[bound+1])
-    push!(result, upper[bound+1] + 100)
+    lex = lex - 90
+    push!(result, lower[bound + 1])
+    push!(result, lower[bound + 1] - 90)
   # push!(result, lex - 100)
   # println(result)
     return result
@@ -101,7 +90,11 @@ function CheckConstraints(ncon, Points)
     # SamplingPoints = GenerateSamplingPoints(10,nvar,lvar,cut)
     for p in Points
     #Get the functional value
-      values = NLPModels.cons(model,p)
+      values = try
+        NLPModels.cons(model,p)
+        catch AmplException
+          continue
+        end
     #Equality Constraint
       if findfirst(econ,i) > 0
         if (satisfiesEqualityLTConstraint(values,i,upper))
@@ -125,14 +118,16 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
   for i = 1: numOfPoints
     arr_Point = Float64[]
     for j = 1: nvar
+      println(lvar[j])
+      println(uvar[j])
       point = rand(lvar[j]:uvar[j])
       push!(arr_Point,point)
     end
     push!(SamplingPoints,arr_Point)
   end
   # for k = 1: numOfPoints
-    #  p = SamplingPoints[k]
-     # println("point" * string(k) * " -> $p\n")
+  #   p = SamplingPoints[k]
+    #  println("point" * string(k) * " -> $p\n")
    # end
   return SamplingPoints
 end
@@ -165,8 +160,10 @@ end
   GTEQ_feasiblePoints = Any[]
   INEQ_feasiblePoints = Any[]
 
-  Rounds = 12
+  Rounds = 30
   b = 1
+  count = 0
+
 # How to convert from Float to Int
 # x = convert(Int64, 1.0)
 
@@ -176,24 +173,24 @@ end
 
   for i = 1:Rounds
     println("Round" * string(i) * "\n")
-    # a = lvar[1]
-    # b = lvar[2]
-    # c = uvar[1]
-    # d = uvar[2]
-    # println("Bounds: -> [$a,$b,$c,$d]\n")
-    cut = Cut(nvar, lvar, 1, b)
-  # println(cut)
+    println(b)
+    cut = Cut(nvar, lvar, uvar, 1, b)
     PrintBounds(nvar, lvar, uvar)
-    Points = GenerateSamplingPoints(1000, nvar, lvar, cut)
-    CheckConstraints(ncon, Points)
-    # if(!(empty!(LTEQ_feasiblePoints)) || (empty!(GTEQ_feasiblePoints)) || (empty!(ITEQ_feasiblePoints)))
-    # println(LTEQ_feasiblePoints)
-    # println(GTEQ_feasiblePoints)
-    # if(empty!(INEQ_feasiblePoints))
-    # println(INEQ_feasiblePoints)
-    if (length(INEQ_feasiblePoints) != 0)
-      b = b + 1
+    if(b == 2)
+      Points = GenerateSamplingPoints(10, nvar, uvar, cut)
+    else
+      Points = GenerateSamplingPoints(10, nvar, lvar, cut)
     end
+    CheckConstraints(ncon, Points)
+    println(LTEQ_feasiblePoints)
+    println(GTEQ_feasiblePoints)
+    # if(empty!(INEQ_feasiblePoints))
+    println(INEQ_feasiblePoints)
+    if (count == 10)
+      b = b + 1
+      count = 0
+    end
+    count = count + 1
   # end
 end
 # empty!(a)
