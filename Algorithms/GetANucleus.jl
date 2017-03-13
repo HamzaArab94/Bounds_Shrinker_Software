@@ -150,7 +150,7 @@ module GetANucleus
       #Sample the Nucleus Box
       println("Sampling Box is now:")
       PrintCurrentBounds(nvar,lvar,uvar)
-      samplingPoints = GenerateSamplingPoints(nvar,nvar,lvar,uvar)
+      samplingPoints = GenerateSamplingPoints(1000,nvar,lvar,uvar)
       println("Sampling....")
       feasiblePoints = Any[]
       equalityConstraint = cBitArray(icon)
