@@ -44,24 +44,24 @@ function Cut(number,lower, bound, index)
   elseif(index == 2)
     lex = [];
     result = [];
-    lex =  lower[bound+1] + 100
-    lower[bound+1] = lower[bound+1] + 100
+    lex =  upper[bound] - 100
+    upper[bound] = upper[bound] - 100
     lex = round(Int, lex)
-    lex = lex - 100
-    push!(result, lower[bound+1])
-    push!(result, lower[bound+1] - 100)
+    lex = lex + 100
+    push!(result, upper[bound])
+    push!(result, upper[bound] + 100)
   # push!(result, lex - 100)
   # println(result)
     return result
   elseif(index == 3)
     lex = [];
     result = [];
-    lex =  upper[bound+1] - 100
-    upper[bound+1] = upper[bound] - 100
+    lex =  lower[bound+1] + 100
+    lower[bound+1] = lower[bound+1] + 100
     lex = round(Int, lex)
-    lex = lex + 100
-    push!(result, upper[bound])
-    push!(result, upper[bound] + 100)
+    lex = lex - 100
+    push!(result, lower[bound+1])
+    push!(result, lower[bound+1] - 100)
   # push!(result, lex - 100)
   # println(result)
     return result
@@ -131,8 +131,8 @@ function GenerateSamplingPoints(numOfPoints,nvar,lvar,uvar)
     push!(SamplingPoints,arr_Point)
   end
   # for k = 1: numOfPoints
-    #  p = SamplingPoints[k]
-     # println("point" * string(k) * " -> $p\n")
+  #   p = SamplingPoints[k]
+    #  println("point" * string(k) * " -> $p\n")
    # end
   return SamplingPoints
 end
@@ -176,17 +176,13 @@ end
 
   for i = 1:Rounds
     println("Round" * string(i) * "\n")
-    # a = lvar[1]
-    # b = lvar[2]
-    # c = uvar[1]
-    # d = uvar[2]
-    # println("Bounds: -> [$a,$b,$c,$d]\n")
+    println(b)
     cut = Cut(nvar, lvar, 1, b)
+    println("Do I get here?")
   # println(cut)
     PrintBounds(nvar, lvar, uvar)
     Points = GenerateSamplingPoints(1000, nvar, lvar, cut)
     CheckConstraints(ncon, Points)
-    # if(!(empty!(LTEQ_feasiblePoints)) || (empty!(GTEQ_feasiblePoints)) || (empty!(ITEQ_feasiblePoints)))
     # println(LTEQ_feasiblePoints)
     # println(GTEQ_feasiblePoints)
     # if(empty!(INEQ_feasiblePoints))
@@ -198,3 +194,4 @@ end
 end
 # empty!(a)
 # rand(lower_bound_int:upper_bound_int)
+
