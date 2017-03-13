@@ -28,52 +28,41 @@ function PrintBounds(nvar,lBOUND,uBOUND)
 end
 
 #Perform cut
-function Cut(number,lower, bound, index)
+function Cut(number,lower, upper, bound, index)
   if(index == 1)
     lex = [];
     result = [];
-    lex =  lower[bound] + 100
-    lower[bound] = lower[bound] + 100
+    lex =  lower[bound] + 90
+    lower[bound] = lower[bound] + 90
     lex = round(Int, lex)
-    lex = lex - 100
+    lex = lex - 90
     push!(result, lower[bound])
-    push!(result, lower[bound] - 100)
+    push!(result, lower[bound] - 90)
   # push!(result, lex - 100)
   # println(result)
     return result
   elseif(index == 2)
+    # println("I am here")
     lex = [];
     result = [];
-    lex =  upper[bound] - 100
-    upper[bound] = upper[bound] - 100
+    lex =  upper[bound] - 90
+    upper[bound] = upper[bound] - 90
     lex = round(Int, lex)
-    lex = lex + 100
+    lex = lex + 90
     push!(result, upper[bound])
-    push!(result, upper[bound] + 100)
+    push!(result, upper[bound] + 90)
   # push!(result, lex - 100)
   # println(result)
     return result
   elseif(index == 3)
     lex = [];
     result = [];
-    lex =  lower[bound+1] + 100
-    lower[bound+1] = lower[bound+1] + 100
+    lex =  lower[2] + 90
+    lower[2] = lower[2] + 90
     lex = round(Int, lex)
-    lex = lex - 100
-    push!(result, lower[bound+1])
-    push!(result, lower[bound+1] - 100)
-  # push!(result, lex - 100)
-  # println(result)
-    return result
-  elseif(index == 4)
-    lex = [];
-    result = [];
-    lex =  upper[bound+1] - 100
-    lower[bound+1] = upper[bound+1] - 100
-    lex = round(Int, lex)
-    lex = lex + 100
-    push!(result, upper[bound+1])
-    push!(result, upper[bound+1] + 100)
+    lex = lex - 90
+    push!(result, lower[2])
+    push!(result, lower[2] - 90)
   # push!(result, lex - 100)
   # println(result)
     return result
@@ -165,8 +154,9 @@ end
   GTEQ_feasiblePoints = Any[]
   INEQ_feasiblePoints = Any[]
 
-  Rounds = 12
+  Rounds = 40
   b = 1
+  count = 0
 # How to convert from Float to Int
 # x = convert(Int64, 1.0)
 
@@ -175,23 +165,32 @@ end
   PrintBounds(nvar, lvar, uvar)
 
   for i = 1:Rounds
+    println(lvar[1])
+    println(lvar[2])
+    println(uvar[1])
+    println(uvar[2])
     println("Round" * string(i) * "\n")
     println(b)
-    cut = Cut(nvar, lvar, 1, b)
-    println("Do I get here?")
+    cut = Cut(nvar, lvar, uvar, 1, b)
+  # println("Do I get here?")
   # println(cut)
     PrintBounds(nvar, lvar, uvar)
-    Points = GenerateSamplingPoints(1000, nvar, lvar, cut)
-    CheckConstraints(ncon, Points)
-    # println(LTEQ_feasiblePoints)
-    # println(GTEQ_feasiblePoints)
-    # if(empty!(INEQ_feasiblePoints))
-    # println(INEQ_feasiblePoints)
-    if (length(INEQ_feasiblePoints) != 0)
-      b = b + 1
+    if(b == 2)
+      Points = GenerateSamplingPoints(10, nvar, uvar, cut)
+    else
+      Points = GenerateSamplingPoints(10, nvar, lvar, cut)
     end
+    CheckConstraints(ncon, Points)
+    println(LTEQ_feasiblePoints)
+    println(GTEQ_feasiblePoints)
+    # if(empty!(INEQ_feasiblePoints))
+    println(INEQ_feasiblePoints)
+    if (count == 10)
+      b = b + 1
+      count = 0
+    end
+    count = count + 1
   # end
 end
 # empty!(a)
 # rand(lower_bound_int:upper_bound_int)
-
