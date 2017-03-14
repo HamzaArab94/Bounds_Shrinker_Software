@@ -6,7 +6,7 @@ module ConstraintConsensus
 
   alpha = 0.5                       #Feasibility distance tolerance
   beta = 0.1                        #Vector length tolerance
-  max_iterations = 500             #Maximum number of constraint consensus
+  max_iterations = 1000             #Maximum number of constraint consensus
   unbounded_lower_value = -(1*10)^3  #Value to replace infinity with on bounds
   unbounded_upper_value = (1*10)^3  #Value to replace infinity with on bounds
   points_to_generate = 10           #Number of random points to generate
@@ -22,6 +22,7 @@ module ConstraintConsensus
   function run(m::AmplModel, new_bounds_ref)
     global c, points_to_generate, new_bounds
 
+    println("Shrinking $points_to_generate points")
     #Generate random points
     random_points = generate(m, points_to_generate)
 
@@ -37,6 +38,8 @@ module ConstraintConsensus
     =#
     for x in random_points
 
+      println("shrinking new point")
+
       #Move point x closer to the feasible region using constraint consensus
       move(m, x)
 
@@ -51,7 +54,7 @@ module ConstraintConsensus
     end
 
     return
-    
+
   end
 
   #=
@@ -113,7 +116,6 @@ module ConstraintConsensus
         #If 3/otherwise we place randomly interim
         else
 
-          println("LBI: $lower_bound_int , UBI: $upper_bound_int")
           #Generate randomly between upper and lower
           randomly_interim = rand(lower_bound_int:upper_bound_int)
 
@@ -156,6 +158,11 @@ module ConstraintConsensus
 
       #Number of violated constraints for a given variable
       n = Array{Int64}(m.meta.nvar)
+      counter = 1
+      for x_value in x
+        n[counter] = 0
+        counter = counter + 1
+      end
 
       #Our component vector for single constraint
       f_vector = Array{Float64}(m.meta.nvar)
@@ -229,6 +236,8 @@ module ConstraintConsensus
 
             #Set each component of feasibility vector
             for x_value in x
+
+              cgradprint = c_grad[x_counter]
 
               if c_grad[x_counter] != 0
 
@@ -313,6 +322,8 @@ module ConstraintConsensus
       #Calculate consensus vector
       s_counter = 1
       for s in s_vector
+        s2 = n[s_counter]
+        println("$s / $s2")
         t_vector[s_counter] = s / n[s_counter]
         s_counter = s_counter + 1
       end
@@ -459,7 +470,17 @@ module ConstraintConsensus
   function set_points_to_generate(value)
     global points_to_generate
 
-    point_to_generate = value
+    points_to_generate = value
+
+  end
+
+  #=
+  Sets the number of points to generate for the algorithm
+  =#
+  function set_max_iterations(value)
+    global max_iterations
+
+    max_iterations = value
 
   end
 
