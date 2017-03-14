@@ -122,6 +122,7 @@ module GetANucleus
     scaleBoth = Any[]
     for i = 1:nvar
         if(lvar[i] <= numUnboundedL && uvar[i] >= numUnboundedU)
+          val2 = uvar[i]
           lvar[i] = -1.0
           uvar[i] = 1.0
           push!(scaleBoth,i)
@@ -154,12 +155,15 @@ module GetANucleus
       println("Sampling....")
       feasiblePoints = Any[]
       equalityConstraint = cBitArray(icon)
+      count = 1
       for point in samplingPoints
+        println(point)
         value= try
-          NLPModels.cons(model,point)
+          cons(model,point)
         catch AmplException
           continue
         end
+        printArray(value)
         for z = 1 : length(value)
           if findfirst(econ,z) <= 0
             if (satisfiesInequalityConstraint(value,z,upper,lower))
@@ -176,7 +180,6 @@ module GetANucleus
           end
         end
       end
-
       if(checkEqualityConstraint(econ,equalityConstraint) || (length(feasiblePoints) > 0))
         scaleFactor = scaleFactor * 10
         if(scaleFactor == 1000000)
@@ -215,9 +218,9 @@ module GetANucleus
   Sets the value for an unbounded upper variable
   =#
   function set_unbounded_upper_value(value)
-    global numUnboundedL
+    global numUnboundedU
 
-    numUnboundedL = value
+    numUnboundedU = value
 
   end
 
@@ -225,9 +228,9 @@ module GetANucleus
   Sets the value for an unbounded lower variable
   =#
   function set_unbounded_lower_value(value)
-    global numUnboundedU
+    global numUnboundedL
 
-    numUnboundedU = value
+    numUnboundedL = value
 
   end
 
