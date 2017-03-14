@@ -33,9 +33,9 @@ module NonLinearIntervalSampling
   end
 
   #Genererate sample points within the given lvar->uvar range
-  function GenerateSamplingPoints(numOfPoints::Int,nvar::Int,lvar::Array,uvar::Array,numUnboundedL,numUnboundedU)
+  function GenerateSamplingPoints(numOfPoints::Int,nvar::Int,lvar::Array,uvar::Array)
     global numUnboundedL, numUnboundedU
-    
+
     SamplingPoints = Any[]
     for i = 1: numOfPoints
       arr_Point = Float64[]
@@ -132,7 +132,7 @@ module NonLinearIntervalSampling
     #For Each Constraint
     for i = 1 : ncon
       #Generate Sampling Points
-      SamplingPoints = GenerateSamplingPoints(nvar,nvar,lvar,uvar,numUnboundedL,numUnboundedU)
+      SamplingPoints = GenerateSamplingPoints(nvar,nvar,lvar,uvar)
       for point in SamplingPoints
         #Get the functional value
         values = try
@@ -191,9 +191,9 @@ module NonLinearIntervalSampling
    Sets the value for an unbounded upper variable
    =#
    function set_unbounded_upper_value(value)
-     global numUnboundedL
+     global numUnboundedU
 
-     numUnboundedL = value
+     numUnboundedU = value
 
    end
 
@@ -201,9 +201,9 @@ module NonLinearIntervalSampling
    Sets the value for an unbounded lower variable
    =#
    function set_unbounded_lower_value(value)
-     global numUnboundedU
+     global numUnboundedL
 
-     numUnboundedU = value
+     numUnboundedL = value
 
    end
 
