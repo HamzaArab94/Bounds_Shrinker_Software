@@ -1,318 +1,261 @@
+using Gtk
+using Gtk.ShortNames
+using AmplNLReader
 
-#Callback for load model menu item
-function load_model_clicked_callback(leaf, button)
-  global selected_model, selected_model_name, selected_algorithm
+include("GUI_callbacks.jl")
+include("./../Algorithms/ConstraintConsensus.jl")
+include("./../Algorithms/GetANucleus.jl")
+include("./../Algorithms/NonLinearIntervalSampling.jl")
 
-  #Allow user to select a model
-  File = open_dialog("Choose a model",Null(),("*.nl",FileFilter("*.nl",name="All supported formats")))
+using ConstraintConsensus
+using GetANucleus
+using NonLinearIntervalSampling
 
-  if(length(File) > 0)
+#Global variables
+selected_model_name = ""
+selected_algorithm = ""
+selected_model = ""
+unbounded_lower_value = -(1*10)^20
+unbounded_upper_value = (1*10)^20
+current_bounds = Array{Float64}
+new_bounds = Array{Float64}
+s_alpha = 0.5
+s_beta = 0.1
+s_ccpoints = 10
+s_ccmaxit = 500
 
-    #Load model
-    selected_model = AmplModel(File)
-
-    #Get model name
-    selected_model_name = basename(File)
-
-    #Update the variable list with the newly selected models variables
-    update_variable_list(false)
-
-    #Update model information
-    update_model_details()
-
-    #If the algorithm has been selected, we are ready to shrink
-    if selected_algorithm != ""
-      println("Selected algorithm is $selected_algorithm")
-      setproperty!(shrink_bounds_btn, :sensitive, true)
-    end
-
-  else
-
-    println("No file chosen")
-
-  end
-
-end
-
-#Callback for when exit is clicked
-function exit_clicked_callback(leaf, button)
-  println("exit")
-  quit()
-end
-
-#Callback for when shrink bounds is clicked
-function shrink_bounds_clicked_callback(leaf, button)
-  global selected_model, selected_algorithm, new_bounds
-  global s_alpha, s_beta, s_ccpoints, s_ccmaxit
-
-  #if the model has been specified
-  if selected_model != "" && selected_algorithm != ""
-
-    #Initialize new bounds array
-    new_bounds = Array{Float64}(selected_model.meta.nvar, 2)
-
-    if selected_algorithm == "Manual Range Cutting"
-
-    elseif selected_algorithm == "Get a Nucleus"
-
-      #Specify settings for get a nucleus and run
-      GetANucleus.set_unbounded_lower_value(unbounded_lower_value)
-      GetANucleus.set_unbounded_upper_value(unbounded_upper_value)
-      GetANucleus.run(selected_model, new_bounds)
-
-    elseif selected_algorithm == "Nonlinear Range Cutting"
-
-    elseif selected_algorithm == "Nonlinear Interval Sampling"
-
-      #Specify settings for nonlinear interval sampling and run
-      NonLinearIntervalSampling.set_unbounded_lower_value(unbounded_lower_value)
-      NonLinearIntervalSampling.set_unbounded_upper_value(unbounded_upper_value)
-      NonLinearIntervalSampling.run(selected_model, new_bounds)
-
-    elseif selected_algorithm == "Constraint Consensus"
-
-      #Specify settings for constraint consensus and run
-      ConstraintConsensus.set_unbounded_lower_value(unbounded_lower_value)
-      ConstraintConsensus.set_unbounded_upper_value(unbounded_upper_value)
-      ConstraintConsensus.set_alpha(s_alpha)
-      ConstraintConsensus.set_beta(s_beta)
-      ConstraintConsensus.set_points_to_generate(s_ccpoints)
-      ConstraintConsensus.set_max_iterations(s_ccmaxit)
-      ConstraintConsensus.run(selected_model, new_bounds)
-
-    elseif selected_algorithm == "Exact Solution"
-
-    end
-
-    #Update the variable list after the algorithm has run
-    update_variable_list(true)
-
-
-  else
-
-    if isempty(selected_model)
-      println("selected model is empty")
-    end
-
-    if isempty(selected_algorithm)
-      println("selected algorithm is empty")
-    end
-
-  end
-
-end
-
-#Callback for when alorithm selected
-function select_algorithm_clicked_callback(leaf, button)
-  global selected_algorithm, shrink_bounds_btn, selected_model, saf_name
-
-  selected_algorithm = getproperty(leaf, :label, String)
-  setproperty!(saf_name, :label, selected_algorithm)
-
-  #if the model is not empty, we are ready to shrink
-  if selected_model != ""
-    setproperty!(shrink_bounds_btn, :sensitive, true)
-  end
-
-end
-
-#Update the variable list based on the selected model
-function update_variable_list(include_new_bounds)
-  global selected_model, variable_list, current_bounds, new_bounds
-
-  empty!(variable_list)
-
-  #Variables for model
-  current_bounds = Array{Float64}(selected_model.meta.nvar, 2)
-
-  #Save variables in list
-  counter = 1
-
-  #Update the current bounds in the table
-  while counter <= selected_model.meta.nvar
-
-    #Current bounds
-    current_lower = selected_model.meta.lvar[counter]
-    current_upper = selected_model.meta.uvar[counter]
-    current_bounds[counter, 1] = current_lower
-    current_bounds[counter, 2] = current_upper
-
-    #New bounds
-    if include_new_bounds
-
-      new_lower = new_bounds[counter, 1]
-      new_upper = new_bounds[counter, 2]
-
-      percent_change_lower_val = ((current_lower - new_lower) / current_lower) * 100
-      percent_change_upper_val = ((current_upper - new_upper) / current_upper) * 100
-
-      percent_change_lower = "$percent_change_lower_val%"
-      percent_change_upper = "$percent_change_upper_val%"
-
-    else
-      new_lower = 0.00
-      new_upper = 0.00
-
-      percent_change_lower = "N/A"
-      percent_change_upper = "N/A"
-    end
-
-    println("New lower is $new_lower")
-    println("New upper is $new_upper")
-
-    push!(variable_list, (counter, current_lower, current_upper, new_lower, new_upper, percent_change_lower, percent_change_upper))
-
-    counter = counter + 1
-
-    #Added to prevent crashing when loading a big model
-    if counter > 100
-      break
-    end
-
-  end
-
-end
-
-#Updates the model information
-function update_model_details()
-  global selected_model, selected_model_name
-  global mdf_name, mdf_variables_val, mdf_constraints1_val, mdf_constraints2_val, mdf_constraints3_val
-
-  #Update values
-  setproperty!(mdf_name, :label, selected_model_name)
-  setproperty!(mdf_variables_val, :label, selected_model.meta.nvar)
-  setproperty!(mdf_constraints1_val, :label, selected_model.meta.ncon)
-  setproperty!(mdf_constraints2_val, :label, selected_model.meta.nlin)
-  setproperty!(mdf_constraints3_val, :label, selected_model.meta.nnln)
-
-end
-
-#Open the algorithm settings window
-function settings_clicked_callback(leaf, button)
-
-  global unbounded_lower_value, unbounded_upper_value, s_alpha, s_beta, s_ccpoints, s_ccmaxit
-  global s_ulv_input, s_uuv_input, s_alpha_input, s_beta_input, s_ccpoints_input, s_ccmaxit_input, settings_window
-
-  settings_window = Window("Algorithm Settings", 800, 800, true, true)
+#=
+Main function to load all GUI components
+=#
+function load_gui()
+  global main_grid, main_window
 
   #Grid layout
-  settings_grid = Grid()
+  main_grid = Grid()
 
-  #Our frame for model information
-  f1 = Frame("General Settings")
-  setproperty!(f1, :margin, 15)
+  setproperty!(main_grid, :column_spacing, 15)
 
-  #Grid for general settings
-  g_md = Grid()
-  setproperty!(g_md, :margin, 10)
-  setproperty!(g_md, :column_spacing, 15)
+  #Our menu bar
+  mb = MenuBar()
 
-  #Settings for Constraint Consensus
-  s_ulv_name = Label("Unbounded Lower Value")
-  s_ulv_input = Entry()
-  setproperty!(s_ulv_input, :text, unbounded_lower_value)
+  #=
+  File menu option
+  =#
+  file = MenuItem("_File")
+  filemenu = Menu(file)
 
-  s_uuv_name = Label("Unbounded Upper Value")
-  s_uuv_input = Entry()
-  setproperty!(s_uuv_input, :text, unbounded_upper_value)
+  #Load model option within file
+  load_ = MenuItem("Load Model")
+  push!(filemenu, load_)
+  id_load_model = signal_connect(load_model_clicked_callback, load_, "button-press-event")
 
-  g_md[1, 1] = s_ulv_name
-  g_md[2, 1] = s_ulv_input
-  g_md[1, 2] = s_uuv_name
-  g_md[2, 2] = s_uuv_input
+  #Save model option within file
+  save_ = MenuItem("Save")
+  push!(filemenu, save_)
 
-  push!(f1, g_md)
+  #Save model option within file
+  settings_ = MenuItem("Settings")
+  push!(filemenu, settings_)
+  id_settings = signal_connect(settings_clicked_callback, settings_, "button-press-event")
 
-  #Our frame for model information
-  f2 = Frame("Constraint Consensus")
-  setproperty!(f2, :margin, 15)
+  #Exit option within file
+  exit_ = MenuItem("Exit")
+  push!(filemenu, exit_)
+  id_exit = signal_connect(exit_clicked_callback, exit_, "button-press-event")
 
-  #Grid for general settings
-  g_md2 = Grid()
-  setproperty!(g_md2, :margin, 10)
-  setproperty!(g_md2, :column_spacing, 15)
+  #Push the file menu to the menu bar
+  push!(mb, file)
 
-  #Settings for Constraint Consensus
-  s_alpha_name = Label("Alpha")
-  s_alpha_input = Entry()
-  setproperty!(s_alpha_input, :text, s_alpha)
+  #=
+  Select Algorithm menu option
+  =#
+  select = MenuItem("_Select Algorithm")
+  selectmenu = Menu(select)
+  mrc_ = MenuItem("Manual Range Cutting")
+  push!(selectmenu, mrc_)
+  gan_ = MenuItem("Get a Nucleus")
+  push!(selectmenu, gan_)
+  nrc_ = MenuItem("Nonlinear Range Cutting")
+  push!(selectmenu, nrc_)
+  nis_ = MenuItem("Nonlinear Interval Sampling")
+  push!(selectmenu, nis_)
+  cc_ = MenuItem("Constraint Consensus")
+  push!(selectmenu, cc_)
+  exact_ = MenuItem("Exact Solution")
+  push!(selectmenu, exact_)
 
-  s_beta_name = Label("Beta")
-  s_beta_input = Entry()
-  setproperty!(s_beta_input, :text, s_beta)
+  id_mrc = signal_connect(select_algorithm_clicked_callback, mrc_, "button-press-event")
+  id_gan = signal_connect(select_algorithm_clicked_callback, gan_, "button-press-event")
+  id_nrc = signal_connect(select_algorithm_clicked_callback, nrc_, "button-press-event")
+  id_nis= signal_connect(select_algorithm_clicked_callback, nis_, "button-press-event")
+  id_cc = signal_connect(select_algorithm_clicked_callback, cc_, "button-press-event")
+  id_exact = signal_connect(select_algorithm_clicked_callback, exact_, "button-press-event")
 
-  s_ccpoints_name = Label("Points to Generate")
-  s_ccpoints_input = Entry()
-  setproperty!(s_ccpoints_input, :text, s_ccpoints)
+  #Push the file menu to the menu bar
+  push!(mb, select)
 
-  s_ccmaxit_name = Label("Max Iterations")
-  s_ccmaxit_input = Entry()
-  setproperty!(s_ccmaxit_input, :text, s_ccmaxit)
+  #=
+  Main window creation
+  =#
 
-  g_md2[1, 1] = s_alpha_name
-  g_md2[2, 1] = s_alpha_input
-  g_md2[1, 2] = s_beta_name
-  g_md2[2, 2] = s_beta_input
-  g_md2[1, 3] = s_ccpoints_name
-  g_md2[2, 3] = s_ccpoints_input
-  g_md2[1, 4] = s_ccmaxit_name
-  g_md2[2, 4] = s_ccmaxit_input
+  #Create the main window
+  main_window = Window("Bounds Shrinker", 1000, 500, true, true)
 
-  push!(f2, g_md2)
+  #Add menu bar to grid layout
+  main_grid[1:2, 1] = mb
 
-  #Our frame for save or cancel buttons
-  f3 = Frame("Actions")
-  setproperty!(f3, :margin, 15)
+  #Load our model information frame
+  load_model_details_frame()
 
-  #Grid for general settings
-  g_md3 = Grid()
-  setproperty!(g_md3, :margin, 10)
-  setproperty!(g_md3, :column_spacing, 15)
+  #Load our model variables frame
+  load_model_variables_frame()
 
-  #Buttons
-  save_settings_btn = Button("Save")
-  id_save_settings= signal_connect(settings_btn_callback, save_settings_btn, "button-press-event")
-
-  cancel_settings_btn = Button("Cancel")
-  id_cancel_settings= signal_connect(settings_btn_callback, cancel_settings_btn, "button-press-event")
-
-  g_md3[1, 1] = save_settings_btn
-  g_md3[2, 1] = cancel_settings_btn
-
-  push!(f3, g_md3)
-
-  settings_grid[1, 1] = f1
-  settings_grid[1, 2] = f2
-  settings_grid[1, 3] = f3
+  #Load our selected algorithm frame
+  load_selected_algorithm_frame()
 
   #Push our grid items to main window
-  push!(settings_window, settings_grid)
-  showall(settings_window)
+  push!(main_window, main_grid)
+  showall(main_window)
 
 end
 
-#Callback for when a button on the settings page is clicked
-function settings_btn_callback(leaf, button)
-  global unbounded_lower_value, unbounded_upper_value, s_alpha, s_beta, s_ccpoints, s_ccmaxit
-  global s_ulv_input, s_uuv_input, s_alpha_input, s_beta_input, s_ccpoints_input, s_ccmaxit_input, settings_window
+#=
+Loads the frame that displays the loaded models
+details such as number of variables, constraints,
+etc.
+=#
+function load_model_details_frame()
+  global main_grid, mdf_name, mdf_variables_val, mdf_constraints1_val, mdf_constraints2_val, mdf_constraints3_val
 
-  #Get which button was clicked
-  button_clicked = getproperty(leaf, :label, String)
+  #Our frame for model information
+  f1 = Frame("Model Information")
+  setproperty!(f1, :margin, 15)
 
-  #If Save button clicked
-  if button_clicked == "Save"
+  main_grid[1,2] = f1
 
-    unbounded_lower_value = parse(Int64, getproperty(s_ulv_input, :text, String))
-    unbounded_upper_value = parse(Int64, getproperty(s_uuv_input, :text, String))
+  #Grid layout
+  g_md = Grid()
+  setproperty!(g_md, :margin, 10)
 
-    s_alpha = parse(Float64, getproperty(s_alpha_input, :text, String))
-    s_beta = parse(Float64, getproperty(s_beta_input, :text, String))
-    s_ccmaxit = parse(Int64, getproperty(s_ccmaxit_input, :text, String))
-    s_ccpoints = parse(Int64, getproperty(s_ccpoints_input, :text, String))
+  #Label for model information
+  mdf_name = Label("No model selected")
+  setproperty!(mdf_name, :margin, 5)
+  mdf_variables = Label("# Variables:")
+  setproperty!(mdf_variables, :xalign, 0)
+  mdf_variables_val = Label("N/A")
+  setproperty!(mdf_variables_val, :xalign, 0)
+  mdf_constraints1 = Label("# General Constraints:")
+  setproperty!(mdf_constraints1, :xalign, 0)
+  mdf_constraints1_val = Label("N/A")
+  setproperty!(mdf_constraints1_val, :xalign, 0)
+  mdf_constraints2 = Label("# Linear Constraints:")
+  setproperty!(mdf_constraints2, :xalign, 0)
+  mdf_constraints2_val = Label("N/A")
+  setproperty!(mdf_constraints2_val, :xalign, 0)
+  mdf_constraints3 = Label("# Nonlinear General Constraints:")
+  setproperty!(mdf_constraints3, :xalign, 0)
+  mdf_constraints3_val = Label("N/A")
+  setproperty!(mdf_constraints3_val, :xalign, 0)
 
+  #Add elements to frame
+  g_md[1:2, 1] = mdf_name
+  g_md[1, 2] = mdf_variables
+  g_md[2, 2] = mdf_variables_val
+  g_md[1, 3] = mdf_constraints1
+  g_md[2, 3] = mdf_constraints1_val
+  g_md[1, 4] = mdf_constraints2
+  g_md[2, 4] = mdf_constraints2_val
+  g_md[1, 5] = mdf_constraints3
+  g_md[2, 5] = mdf_constraints3_val
+
+  #Add this sub grid to our main grid
+  push!(f1, g_md)
+
+end
+
+#=
+Loads the frame that displays the models variables
+=#
+function load_model_variables_frame()
+  global main_grid, variable_list
+
+  #Our frame for model information
+  f2 = Frame("Model Variables")
+  setproperty!(f2, :margin, 15)
+
+  #Our actual list stored
+  variable_list = ListStore(Int, Float64, Float64, Float64, Float64, String, String)
+
+  #Viewing our list
+  tv_container = ScrolledWindow()
+  setproperty!(tv_container, :hexpand, true)
+  tv = TreeView(TreeModel(variable_list))
+  rTxt = CellRendererText()
+
+  #Columns
+  c1 = TreeViewColumn("Var", rTxt, Dict([("text",0)]))
+  c2 = TreeViewColumn("Orig LB", rTxt, Dict([("text",1)]))
+  c3 = TreeViewColumn("Orig UB", rTxt, Dict([("text",2)]))
+  c4 = TreeViewColumn("New LB", rTxt, Dict([("text",3)]))
+  c5 =  TreeViewColumn("New UB", rTxt, Dict([("text",4)]))
+  c6 = TreeViewColumn("LB % Shrunk", rTxt, Dict([("text",5)]))
+  c7 = TreeViewColumn("UB % Shrunk", rTxt, Dict([("text",6)]))
+  push!(tv, c1, c2, c3, c4, c5, c6, c7)
+
+  #Make the columns sortable
+  for (i,c) in enumerate([c1,c2,c3,c4,c5,c6,c7])
+    GAccessor.sort_column_id(c,i-1)
   end
 
-  #Close the window
-  destroy(settings_window)
+  #Push to frame
+  push!(tv_container, tv)
+  push!(f2, tv_container)
+
+  #Set frame inside grid
+  main_grid[2, 2:3] = f2
+
+
+end
+
+#=
+Loads the frame that displays the selected algorithm
+=#
+function load_selected_algorithm_frame()
+  global main_grid, selected_algorithm, shrink_bounds_btn, accept_bounds_btn, saf_name
+  global g_sa, f3, s_alpha_name, s_alpha_input, s_beta_name, s_beta_input, s_points_name, s_points_input, s_maxit_name, s_maxit_input, shrink_bounds_btn, accept_bounds_btn
+
+  #Our frame for model information
+  f3 = Frame("Selected Algorithm")
+  setproperty!(f3, :margin, 15)
+
+  main_grid[1, 3] = f3
+  setproperty!(main_grid, :row_spacing, 5)
+  setproperty!(main_grid, :column_spacing, 5)
+
+  #Grid layout
+  g_sa = Grid()
+  setproperty!(g_sa, :margin, 10)
+
+  #Labels
+  saf_name = Label("No algorithm selected")
+  setproperty!(saf_name, :margin, 5)
+  setproperty!(saf_name, :xalign, 0.5)
+
+  #Buttons
+  shrink_bounds_btn = Button("Shrink Bounds")
+  setproperty!(shrink_bounds_btn, :sensitive, false)
+  id_shrink_bounds = signal_connect(shrink_bounds_clicked_callback, shrink_bounds_btn, "button-press-event")
+
+  accept_bounds_btn = Button("Accept New Bounds")
+  setproperty!(accept_bounds_btn, :sensitive, false)
+
+  #Assign element locations
+  g_sa[1:2, 1] = saf_name
+
+  g_sa[1, 2] = shrink_bounds_btn
+  g_sa[2, 2] = accept_bounds_btn
+
+  #Assign position of the frame
+  push!(f3, g_sa)
 
 end
