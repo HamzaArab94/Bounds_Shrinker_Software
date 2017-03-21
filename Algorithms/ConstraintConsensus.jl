@@ -9,7 +9,7 @@ module ConstraintConsensus
   max_iterations = 1000             #Maximum number of constraint consensus
   unbounded_lower_value = -(1*10)^3  #Value to replace infinity with on bounds
   unbounded_upper_value = (1*10)^3  #Value to replace infinity with on bounds
-  points_to_generate = 10           #Number of random points to generate
+  points_to_generate = 1            #Number of random points to generate
   mutex = RemoteChannel()           #For mutex
   new_bounds = Array{Float64}
 
@@ -20,7 +20,7 @@ module ConstraintConsensus
   dimension and applying the constraint consensus method to each point.
   =#
   function run(m::AmplModel, new_bounds_ref)
-    global c, points_to_generate, new_bounds
+    global c, points_to_generate, new_bounds, new_bounds_flag
 
     println("Shrinking $points_to_generate points")
     #Generate random points
@@ -28,6 +28,7 @@ module ConstraintConsensus
 
     #Array for shrunked bounds
     new_bounds = Array{Float64}(m.meta.nvar, 2)
+    new_bounds_flag = fill(0, m.meta.nvar)
 
     #For each random point generated
     #=
@@ -369,7 +370,7 @@ module ConstraintConsensus
   Attempts to shrink the bounds on a variable range given a point
   =#
   function shrink(x)
-    global new_bounds
+    global new_bounds, new_bounds_flag
 
     println("($(myid())) Trying to shrink...")
 
@@ -384,10 +385,26 @@ module ConstraintConsensus
     #For each dimension of the point
     for x_var in x
 
-      #If lower bound is set
-      if isdefined(new_bounds, counter, 1)
+      #If we have already set an upper and lower bound
+      if new_bounds_flag[counter] == 0
 
-        #If point has value greater than current minimum value
+        #Set the lower bound to this points value
+        new_bounds[counter, 1] = x_var
+
+        #Set the upper bound to this points value
+        new_bounds[counter, 2] = x_var
+
+        #Set the flag that we have set a value based on a point
+        new_bounds_flag[counter] = 1
+
+      #Value already set by a point
+      else
+
+        val1 = new_bounds[counter, 1]
+        val2 = new_bounds[counter, 2]
+        println("Current lower/upper bound for dimension $counter is $val1/$val2")
+
+        #If point has value less than current minimum value
         if x_var < new_bounds[counter, 1]
 
           old_value = new_bounds[counter, 1]
@@ -398,19 +415,6 @@ module ConstraintConsensus
           new_bounds[counter, 1] = x_var
 
         end
-
-      #Automatically the smallest point so far for this dimension
-      else
-
-        println("($(myid())) No upper bound set for dimension $counter, new value is $x_var")
-
-        #Set the upper bound to this points value
-        new_bounds[counter, 1] = x_var
-
-      end
-
-      #If upper bound is set
-      if isdefined(new_bounds, counter, 2)
 
         #If point has value greater than current maximum value
         if x_var > new_bounds[counter, 2]
@@ -423,14 +427,6 @@ module ConstraintConsensus
           new_bounds[counter, 2] = x_var
 
         end
-
-      #Automatically the smallest point so far for this dimension
-      else
-
-        println("($(myid())) Upper bound set for dimension $counter, new value is $x_var")
-
-        #Set the lower bound to this points value
-        new_bounds[counter, 2] = x_var
 
       end
 
