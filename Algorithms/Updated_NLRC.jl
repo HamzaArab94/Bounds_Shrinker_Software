@@ -137,6 +137,9 @@ function NonLinearRangeCutting(model)
   #Number of Constraints
   ncon = model.meta.ncon
 
+  #Copy of ncon
+  ncon_replace = ncon
+
   #30% of all cuts (Templated)
   p = 0.3
 
@@ -151,21 +154,26 @@ function NonLinearRangeCutting(model)
   #Represent # of Rounds for every cut
   i = 1
 
+  #Represent # of Number Lines passed
+  dimension = 1
+
   println("Welcome to Non Linear Range Cutting Algorithm!\n")
   println("Beginning variable bounds\n")
   PrintBounds(nvar, lvar, uvar)
-
+  println(length(lvar) * 2)
   while (i < 2)
       println("Round " * string(i) * "\n")
       box = BoxLower(p, lvar_replace[b], uvar_replace[b])
-      lvar_replace[b] = box[b]
-      uvar_replace[b] = box[b + 1]
+      println(box[1])
+      println(box[2])
+      lvar_replace[b] = box[1]
+      # uvar_replace[b] = box[2]
       Points = GenerateSamplingPoints(10, nvar_replace, lvar_replace, uvar_replace)
-      CheckConstraints(ncon, Points)
+      CheckConstraints(ncon_replace, Points)
       if(Cut(LTEQ_feasiblePoints, GTEQ_feasiblePoints, INEQ_feasiblePoints))
         println("This cut is possible.")
-        lvar[b] = box[2]
-        PrintBounds(nvar, lvar, uvar)
+        lvar_replace[b] = box[2]
+        PrintBounds(nvar_replace, lvar_replace, uvar_replace)
         p = 0.3
         i = i + 1
       end
