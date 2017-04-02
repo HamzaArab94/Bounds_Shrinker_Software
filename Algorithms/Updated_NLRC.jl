@@ -157,26 +157,55 @@ function NonLinearRangeCutting(model)
   #Represent # of Number Lines passed
   dimension = 1
 
+  size = (length(lvar) * 2)
+
   println("Welcome to Non Linear Range Cutting Algorithm!\n")
   println("Beginning variable bounds\n")
   PrintBounds(nvar, lvar, uvar)
-  println(length(lvar) * 2)
-  while (i < 2)
+  # println(length(lvar) * 2)
+  while (dimension < size + 1)
       println("Round " * string(i) * "\n")
-      box = BoxLower(p, lvar_replace[b], uvar_replace[b])
-      println(box[1])
-      println(box[2])
-      lvar_replace[b] = box[1]
-      # uvar_replace[b] = box[2]
-      Points = GenerateSamplingPoints(10, nvar_replace, lvar_replace, uvar_replace)
-      CheckConstraints(ncon_replace, Points)
-      if(Cut(LTEQ_feasiblePoints, GTEQ_feasiblePoints, INEQ_feasiblePoints))
-        println("This cut is possible.")
-        lvar_replace[b] = box[2]
-        PrintBounds(nvar_replace, lvar_replace, uvar_replace)
-        p = 0.3
-        i = i + 1
+      if(dimension % 2 != 0)
+        b = 1
+        box = BoxLower(p, lvar_replace[b], uvar_replace[b])
+        lvar_replace[b] = box[b]
+        Points = GenerateSamplingPoints(1000, nvar_replace, lvar_replace, uvar_replace)
+        CheckConstraints(ncon_replace, Points)
+        if(Cut(LTEQ_feasiblePoints, GTEQ_feasiblePoints, INEQ_feasiblePoints))
+          println("This cut is possible.")
+          lvar_replace[b] = box[2]
+          PrintBounds(nvar_replace, lvar_replace, uvar_replace)
+          p = 0.3
+          i = i + 1
+        else
+          println("This cut is not possible.")
+          p = p / 2
+          if(p < 0.02)
+            p = 0.3
+            dimension = dimension + 1
+          end
+        end
       end
-      p = p / 2
+      if(dimension % 2 == 0)
+        b = 2
+        box = BoxUpper(p, lvar_replace[b], uvar_replace[b])
+        uvar_replace[b] = box[b]
+        Points = GenerateSamplingPoints(1000, nvar_replace, lvar_replace, uvar_replace)
+        CheckConstraints(ncon_replace, Points)
+        if(Cut(LTEQ_feasiblePoints, GTEQ_feasiblePoints, INEQ_feasiblePoints))
+          println("This cut is possible.")
+          uvar_replace[b] = box[2]
+          PrintBounds(nvar_replace, lvar_replace, uvar_replace)
+          p = 0.3
+          i = i + 1
+        else
+          println("This cut is not possible.")
+          p = p / 2
+          if(p < 0.02)
+            p = 0.3
+            dimension = dimension + 1
+          end
+        end
+      end
     end
-end
+  end
