@@ -4,8 +4,8 @@ module GetANucleus
   using AmplNLReader,Gtk.ShortNames
 
   #Global variables
-  numUnboundedL = -(1*10)^20
-  numUnboundedU = (1*10)^20
+  numUnboundedL = -(1*10)^10
+  numUnboundedU = (1*10)^10
 
   #Prints the current bounds of all variables
   function PrintCurrentBounds(nvar,lBOUND,uBOUND)
@@ -90,6 +90,20 @@ module GetANucleus
     end
   end
 
+  function cannotFurtherScale(lvar,uvar)
+    for item in lvar
+      if item <= numUnboundedL
+        return true
+      end
+    end
+    for item in uvar
+      if item >= numUnboundedU
+        return true
+      end
+    end
+    return false
+  end
+
   function run(model, new_bounds_ref)
     global numUnboundedU, numUnboundedL
 
@@ -157,13 +171,11 @@ module GetANucleus
       equalityConstraint = cBitArray(icon)
       count = 1
       for point in samplingPoints
-        println(point)
         value= try
           cons(model,point)
         catch AmplException
           continue
         end
-        printArray(value)
         for z = 1 : length(value)
           if findfirst(econ,z) <= 0
             if (satisfiesInequalityConstraint(value,z,upper,lower))
@@ -182,17 +194,15 @@ module GetANucleus
       end
       if(checkEqualityConstraint(econ,equalityConstraint) || (length(feasiblePoints) > 0))
         scaleFactor = scaleFactor * 10
-        if(scaleFactor == 1000000)
-          println("\nCan be further scaled\nScaling Box...")
-          ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
-          println("@Infinity, cannot scale further")
+        println("\nCan be further scaled\nScaling Box...")
+        ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
+        if(cannotFurtherScale(lvar,uvar))
+          println("@Unbounded Limit, cannot scale further")
           PrintCurrentBounds(nvar,lvar,uvar)
           #Commented out because we update the bounds passed in by reference
           #return [lvar,uvar]
           complete = true
         end
-        println("\nCan be further scaled\nScaling Box...")
-        ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
       else
         complete  = true
         println("no feasible points found going back to last box")
@@ -221,6 +231,7 @@ module GetANucleus
     global numUnboundedU
 
     numUnboundedU = value
+    println(numUnboundedU)
 
   end
 
@@ -231,6 +242,7 @@ module GetANucleus
     global numUnboundedL
 
     numUnboundedL = value
+    println(numUnboundedL)
 
   end
 
