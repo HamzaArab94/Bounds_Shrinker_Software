@@ -103,20 +103,26 @@ module ConstraintConsensus
         #Generate a random number
         random_num = rand(1:3)
 
-        #Lower bound as integer
-        lower_bound_int = floor(m.meta.lvar[d_count])
-
         #If negative infinity use infinity value
-        if lower_bound_int == -Inf
+        if m.meta.lvar[d_count] == -Inf
           lower_bound_int = unbounded_lower_value
+
+        #Use whatever value is specified in the bounds
+        else
+
+          #Lower bound as integer
+          lower_bound_int = Int(floor(m.meta.lvar[d_count]))
+
         end
 
-        #Upper bound as integer
-        upper_bound_int = ceil(m.meta.uvar[d_count])
-
         #If infinity use infinity value
-        if upper_bound_int == Inf
+        if m.meta.uvar[d_count] == Inf
           upper_bound_int = unbounded_upper_value
+
+        #Use whatever value is specified in the bounds          
+        else
+          #Upper bound as integer
+          upper_bound_int = Int(ceil(m.meta.uvar[d_count]))
         end
 
         #If 1 then place on upper bound of dimension
