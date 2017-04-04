@@ -61,8 +61,18 @@ module ConstraintConsensus
       else
 
         #Update new bounds reference with determined bounds
-        new_bounds_ref[counter, 1] = new_bounds[counter, 1]
-        new_bounds_ref[counter, 2] = new_bounds[counter, 2]
+        if new_bounds[counter, 1] > m.meta.lvar[counter]
+          new_bounds_ref[counter, 1] = new_bounds[counter, 1]
+        else
+          new_bounds_ref[counter, 1] = m.meta.lvar[counter]
+        end
+
+        if new_bounds[counter, 2] < m.meta.uvar[counter]
+          new_bounds_ref[counter, 2] = new_bounds[counter, 2]
+        else
+          new_bounds_ref[counter, 2] = m.meta.uvar[counter]
+        end
+      
       end
 
       counter = counter + 1
