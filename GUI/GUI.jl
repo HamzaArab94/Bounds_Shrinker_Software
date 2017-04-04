@@ -260,6 +260,7 @@ function load_selected_algorithm_frame()
 
   accept_bounds_btn = Button("Accept New Bounds")
   setproperty!(accept_bounds_btn, :sensitive, false)
+  id_shrink_bounds = signal_connect(accept_bounds_clicked_callback, accept_bounds_btn, "button-press-event")
 
   #Assign element locations
   g_sa[1:2, 1] = saf_name
