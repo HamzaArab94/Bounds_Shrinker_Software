@@ -104,7 +104,7 @@ module ConstraintConsensus
         random_num = rand(1:3)
 
         #If negative infinity use infinity value
-        if m.meta.lvar[d_count] == -Inf
+        if m.meta.lvar[d_count] <= -unbounded_lower_value
           lower_bound_int = unbounded_lower_value
 
         #Use whatever value is specified in the bounds
@@ -116,10 +116,10 @@ module ConstraintConsensus
         end
 
         #If infinity use infinity value
-        if m.meta.uvar[d_count] == Inf
+        if m.meta.uvar[d_count] >= unbounded_upper_value
           upper_bound_int = unbounded_upper_value
 
-        #Use whatever value is specified in the bounds          
+        #Use whatever value is specified in the bounds
         else
           #Upper bound as integer
           upper_bound_int = Int(ceil(m.meta.uvar[d_count]))
@@ -219,6 +219,9 @@ module ConstraintConsensus
   function move(m, x)
     global c, alpha, beta, max_iterations
 
+    println("X Starting Position is ")
+    println(x)
+
     #Set counter to 0
     i = 0
 
@@ -229,22 +232,37 @@ module ConstraintConsensus
       #Number of violated constraints for a given variable
       n = Array{Int64}(m.meta.nvar)
       counter = 1
-      for x_value in x
+      for x_value in m.meta.nvar
         n[counter] = 0
         counter = counter + 1
       end
 
       #Our component vector for single constraint
       f_vector = Array{Float64}(m.meta.nvar)
+      counter = 1
+      for x_value in m.meta.nvar
+        f_vector[counter] = 0
+        counter = counter + 1
+      end
 
       #Sum of component vectors for the variable over the feasibility vectors for all violated constraints
       s_vector = Array{Float64}(m.meta.nvar)
+      counter = 1
+      for x_value in m.meta.nvar
+        s_vector[counter] = 0
+        counter = counter + 1
+      end
 
       #Number of constraints violated
       ninf = 0
 
       #Consensus vectors
       t_vector = Array{Float64}(m.meta.nvar)
+      counter = 1
+      for x_value in m.meta.nvar
+        t_vector[counter] = 0
+        counter = counter + 1
+      end
 
       #Constraint counter for looping all constraints
       constraint_counter = 1
@@ -434,14 +452,14 @@ module ConstraintConsensus
     println("($(myid())) about to shrink")
 
     #Attempt to shrink variable bounds based on new point
-    shrink(x)
+    shrink(m, x)
 
   end
 
   #=
   Attempts to shrink the bounds on a variable range given a point
   =#
-  function shrink(x)
+  function shrink(m, x)
     global new_bounds, new_bounds_flag
 
     println("($(myid())) Trying to shrink...")
@@ -457,14 +475,22 @@ module ConstraintConsensus
     #For each dimension of the point
     for x_var in x
 
-      #If we have already set an upper and lower bound
+      #If we have not already set an upper and lower bound
       if new_bounds_flag[counter] == 0
 
         #Set the lower bound to this points value
-        new_bounds[counter, 1] = x_var
+        if m.meta.lvar[counter] < xvar
+          new_bounds[counter, 1] = xvar
+        else
+          new_bounds[counter, 1] = m.meta.lvar[counter]
+        end
 
         #Set the upper bound to this points value
-        new_bounds[counter, 2] = x_var
+        if m.meta.uvar[counter] > xvar
+          new_bounds[counter, 2] = xvar
+        else
+          new_bounds[counter, 2] = m.meta.uvar[counter]               
+        end
 
         #Set the flag that we have set a value based on a point
         new_bounds_flag[counter] = 1
