@@ -72,16 +72,28 @@ function load_gui()
   select = MenuItem("_Select Algorithm")
   selectmenu = Menu(select)
   mrc_ = MenuItem("Manual Range Cutting")
+
+  #Disable manual range cutting until hamza has it working
+  setproperty!(mrc_, :sensitive, false)
+
   push!(selectmenu, mrc_)
   gan_ = MenuItem("Get a Nucleus")
   push!(selectmenu, gan_)
   nrc_ = MenuItem("Nonlinear Range Cutting")
+
+  #Disable nonlinear range cutting until hamza has it working
+  setproperty!(nrc_, :sensitive, false)
+
   push!(selectmenu, nrc_)
   nis_ = MenuItem("Nonlinear Interval Sampling")
   push!(selectmenu, nis_)
   cc_ = MenuItem("Constraint Consensus")
   push!(selectmenu, cc_)
   exact_ = MenuItem("Exact Solution")
+
+  #Disable manual range cutting until hamza has it working
+  setproperty!(exact_, :sensitive, false)
+
   push!(selectmenu, exact_)
 
   id_mrc = signal_connect(select_algorithm_clicked_callback, mrc_, "button-press-event")
