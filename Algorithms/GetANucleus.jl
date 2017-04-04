@@ -159,7 +159,6 @@ module GetANucleus
       return
     end
 
-    scaleFactor = 1
     complete = false
     while(!complete)
       #Sample the Nucleus Box
@@ -193,9 +192,8 @@ module GetANucleus
         end
       end
       if(checkEqualityConstraint(econ,equalityConstraint) || (length(feasiblePoints) > 0))
-        scaleFactor = scaleFactor * 10
         println("\nCan be further scaled\nScaling Box...")
-        ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
+        ScaleBox(scaleLower,scaleUpper,scaleBoth,lvar,uvar,10)
         if(cannotFurtherScale(lvar,uvar))
           println("@Unbounded Limit, cannot scale further")
           PrintCurrentBounds(nvar,lvar,uvar)
@@ -206,7 +204,7 @@ module GetANucleus
       else
         complete  = true
         println("no feasible points found going back to last box")
-        reduceScale(scaleLower,scaleUpper,scaleBoth,lvar,uvar,scaleFactor)
+        reduceScale(scaleLower,scaleUpper,scaleBoth,lvar,uvar,10)
         PrintCurrentBounds(nvar,lvar,uvar)
         #Commented out because we update the bounds passed in by reference
         #return [lvar,uvar]
