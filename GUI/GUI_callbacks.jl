@@ -226,7 +226,14 @@ function update_variable_list(include_new_bounds)
       new_upper = new_bounds[counter, 2]
 
       percent_change_lower_val = ((current_lower - new_lower) / current_lower) * 100
+      if percent_change_lower_val < 0.01
+        percent_change_lower_val = 0
+      end
+
       percent_change_upper_val = ((current_upper - new_upper) / current_upper) * 100
+      if percent_change_upper_val < 0.01
+        percent_change_upper_val = 0
+      end
 
       percent_change_lower = "$percent_change_lower_val%"
       percent_change_upper = "$percent_change_upper_val%"
