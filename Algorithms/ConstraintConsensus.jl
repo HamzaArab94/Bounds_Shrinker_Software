@@ -49,8 +49,22 @@ module ConstraintConsensus
     #Save current bounds in new bounds
     counter = 1
     while counter <= m.meta.nvar
-      new_bounds_ref[counter, 1] = new_bounds[counter, 1]
-      new_bounds_ref[counter, 2] = new_bounds[counter, 2]
+
+      #Bounds were never accessed
+      if new_bounds_flag[counter] == 0
+
+        #Set original bounds
+        new_bounds_ref[counter, 1] = m.meta.lvar[counter]
+        new_bounds_ref[counter, 2] = m.meta.uar[counter]
+
+      #Bounds were updated
+      else
+
+        #Update new bounds reference with determined bounds
+        new_bounds_ref[counter, 1] = new_bounds[counter, 1]
+        new_bounds_ref[counter, 2] = new_bounds[counter, 2]
+      end
+
       counter = counter + 1
     end
 
@@ -70,6 +84,9 @@ module ConstraintConsensus
 
     #Counter for random points generated
     p_count = 1
+
+    #Counter for each point attemped to be generated but feasible
+    p_count_fail = 1
 
     #For each random point to generate
     while p_count <= to_generate
@@ -130,16 +147,62 @@ module ConstraintConsensus
 
       end
 
-      #Add point to array to return
-      random_points[p_count] = p
+      if is_feasible(m, p) == false
 
-      #Increment point counter
-      p_count = p_count + 1
+        #Add point to array to return
+        random_points[p_count] = p
+
+        #Increment point counter
+        p_count = p_count + 1
+
+      else
+
+        #Increment failed point counter
+        p_count_fail = p_count_fail + 1
+
+        #Check if failed points great enough
+        if p_count_fail > to_generate * 2
+
+          break
+
+        end
+
+      end
 
     end
 
     #Return our array of random points
     return random_points
+
+  end
+
+  #=
+  Determines whether or not a point is in the feasible region
+  =#
+  function is_feasible(m, x)
+
+    constraint_counter = 1
+
+    #Loop each constraint
+    for c in cons(m, x)
+
+      #If the constraint upper bound is violated
+      if c > m.meta.ucon[constraint_counter]
+        return false
+      end
+
+      #If the constraint lower bound is violated
+      if c < m.meta.lcon[constraint_counter]
+        return false
+      end
+
+      #Move to next constraint
+      constraint_counter = constraint_counter + 1
+
+    end
+
+    #If we got here the point is feasible
+    return true
 
   end
 
@@ -180,6 +243,9 @@ module ConstraintConsensus
       #Constraint counter for looping all constraints
       constraint_counter = 1
 
+      #Violation counter for constraints
+      constraints_violated = 0
+
       #Loop each constraint
       for c in cons(m, x)
 
@@ -204,7 +270,7 @@ module ConstraintConsensus
         #If the constraint lower bound is violated
         if c < m.meta.lcon[constraint_counter]
 
-          violation = m.mSharedVectoreta.lcon[constraint_counter] - c
+          violation = m.meta.lcon[constraint_counter] - c
           constraint_violated = true
           println("($(myid())) Constraint $constraint_counter lower bound was violated ($c)")
 
