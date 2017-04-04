@@ -81,7 +81,7 @@ end
 #Callback for when shrink bounds is clicked
 function shrink_bounds_clicked_callback(leaf, button)
   global selected_model, selected_algorithm, new_bounds
-  global s_alpha, s_beta, s_ccpoints, s_ccmaxit
+  global s_alpha, s_beta, s_ccpoints, s_ccmaxit, accept_bounds_btn
 
   #if the model has been specified
   if selected_model != "" && selected_algorithm != ""
@@ -122,6 +122,9 @@ function shrink_bounds_clicked_callback(leaf, button)
 
     end
 
+    #Enable the accept new variable bounds button
+    setproperty!(accept_bounds_btn, :sensitive, true)
+
     #Update the variable list after the algorithm has run
     update_variable_list(true)
 
@@ -137,6 +140,37 @@ function shrink_bounds_clicked_callback(leaf, button)
     end
 
   end
+
+end
+
+#Callback for when the user clicks accept bounds
+function accept_bounds_clicked_callback(leaf, button)
+  global new_bounds, selected_model, accept_bounds_btn
+
+  println("accept bounds clicked")
+
+  #loop each variable
+  counter = 1
+  while counter <= selected_model.meta.nvar
+
+    #Set the models upper and lower bound for variable to new values
+    selected_model.meta.lvar[counter] = new_bounds[counter, 1]
+    selected_model.meta.uvar[counter] = new_bounds[counter, 2]
+
+    #Increment counter
+    counter = counter + 1
+
+  end
+
+  #Reset the new bounds array as they have been moved to actual bounds
+  new_bounds = Array{Float64}
+
+  #Disable the accept new bounds button
+  setproperty!(accept_bounds_btn, :sensitive, true)
+
+  #Update the variable list
+  update_variable_list(false)
+
 
 end
 
