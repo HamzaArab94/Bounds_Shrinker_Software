@@ -1,7 +1,7 @@
 
 #Callback for load model menu item
 function load_model_clicked_callback(leaf, button)
-  global selected_model, selected_model_name, selected_algorithm
+  global selected_model, selected_model_name, selected_algorithm, main_window
 
   #Allow user to select a model
   File = open_dialog("Choose a model",Null(),("*.nl",FileFilter("*.nl",name="All supported formats")))
@@ -22,8 +22,17 @@ function load_model_clicked_callback(leaf, button)
 
     #If the algorithm has been selected, we are ready to shrink
     if selected_algorithm != ""
+
       println("Selected algorithm is $selected_algorithm")
-      setproperty!(shrink_bounds_btn, :sensitive, true)
+
+      #Get a nucleus requires 1 unbounded variable
+      if selected_algorithm == "Get a Nucleus" && selected_model_has_unbounded() == false
+        setproperty!(shrink_bounds_btn, :sensitive, false)
+        warn_dialog("Get a Nucleus requires the model to have at least 1 unbounded variable", main_window)
+
+      else
+        setproperty!(shrink_bounds_btn, :sensitive, true)
+      end
     end
 
   else
@@ -31,6 +40,35 @@ function load_model_clicked_callback(leaf, button)
     println("No file chosen")
 
   end
+
+end
+
+#Check whether or not the selected model has at least 1 unbounded variable
+function selected_model_has_unbounded()
+  global selected_model
+
+
+  #loop each variable
+  counter = 1
+  while counter <= selected_model.meta.nvar
+
+    #If lower bound is unbounded return true
+    if selected_model.meta.lvar[counter] == Inf
+      return true
+    end
+
+    #If upper bound is unbounded return true
+    if selected_model.meta.uvar[counter] == Inf
+      return true
+    end
+
+    #Check next variable
+    counter = counter + 1
+  end
+
+println("No unbounded")
+  #If we get here there are no unbounded variables
+  return false
 
 end
 
@@ -104,14 +142,24 @@ end
 
 #Callback for when alorithm selected
 function select_algorithm_clicked_callback(leaf, button)
-  global selected_algorithm, shrink_bounds_btn, selected_model, saf_name
+  global selected_algorithm, shrink_bounds_btn, selected_model, saf_name, main_window
 
   selected_algorithm = getproperty(leaf, :label, String)
   setproperty!(saf_name, :label, selected_algorithm)
 
   #if the model is not empty, we are ready to shrink
   if selected_model != ""
-    setproperty!(shrink_bounds_btn, :sensitive, true)
+
+    #Get a nucleus requires 1 unbounded variable
+    if selected_algorithm == "Get a Nucleus" && selected_model_has_unbounded() == false
+      warn_dialog("Get a Nucleus requires the model to have at least 1 unbounded variable", main_window)
+      setproperty!(shrink_bounds_btn, :sensitive, false)
+
+    #Not get a nucleus or the model has 1 unbounded variable
+    else
+      setproperty!(shrink_bounds_btn, :sensitive, true)
+    end
+
   end
 
 end
@@ -193,7 +241,7 @@ function settings_clicked_callback(leaf, button)
   global unbounded_lower_value, unbounded_upper_value, s_alpha, s_beta, s_ccpoints, s_ccmaxit
   global s_ulv_input, s_uuv_input, s_alpha_input, s_beta_input, s_ccpoints_input, s_ccmaxit_input, settings_window
 
-  settings_window = Window("Algorithm Settings", 800, 800, true, true)
+  settings_window = Window("Algorithm Settings", 400, 450, true, true)
 
   #Grid layout
   settings_grid = Grid()
