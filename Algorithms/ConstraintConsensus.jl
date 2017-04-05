@@ -28,6 +28,15 @@ module ConstraintConsensus
 
     #Array for shrunked bounds
     new_bounds = Array{Float64}(m.meta.nvar, 2)
+
+    #Save current bounds in new bounds
+    counter = 1
+    while counter <= m.meta.nvar
+      new_bounds_ref[counter, 1] = m.meta.lvar[counter]
+      new_bounds_ref[counter, 2] = m.meta.uvar[counter]
+      counter = counter + 1
+    end
+
     new_bounds_flag = fill(0, m.meta.nvar)
 
     #For each random point generated
@@ -50,15 +59,8 @@ module ConstraintConsensus
     counter = 1
     while counter <= m.meta.nvar
 
-      #Bounds were never accessed
-      if new_bounds_flag[counter] == 0
-
-        #Set original bounds
-        new_bounds_ref[counter, 1] = m.meta.lvar[counter]
-        new_bounds_ref[counter, 2] = m.meta.uar[counter]
-
-      #Bounds were updated
-      else
+      #Bounds were accessed
+      if new_bounds_flag[counter] != 0
 
         #Update new bounds reference with determined bounds
         if new_bounds[counter, 1] > m.meta.lvar[counter]
@@ -72,7 +74,7 @@ module ConstraintConsensus
         else
           new_bounds_ref[counter, 2] = m.meta.uvar[counter]
         end
-      
+
       end
 
       counter = counter + 1
@@ -489,17 +491,17 @@ module ConstraintConsensus
       if new_bounds_flag[counter] == 0
 
         #Set the lower bound to this points value
-        if m.meta.lvar[counter] < xvar
-          new_bounds[counter, 1] = xvar
+        if m.meta.lvar[counter] < x_var
+          new_bounds[counter, 1] = x_var
         else
           new_bounds[counter, 1] = m.meta.lvar[counter]
         end
 
         #Set the upper bound to this points value
-        if m.meta.uvar[counter] > xvar
-          new_bounds[counter, 2] = xvar
+        if m.meta.uvar[counter] > x_var
+          new_bounds[counter, 2] = x_var
         else
-          new_bounds[counter, 2] = m.meta.uvar[counter]               
+          new_bounds[counter, 2] = m.meta.uvar[counter]
         end
 
         #Set the flag that we have set a value based on a point
