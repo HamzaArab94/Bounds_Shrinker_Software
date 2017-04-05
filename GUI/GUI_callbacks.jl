@@ -1,7 +1,7 @@
 
 #Callback for load model menu item
 function load_model_clicked_callback(leaf, button)
-  global selected_model, selected_model_name, selected_algorithm, main_window
+  global selected_model, selected_model_name, selected_algorithm, main_window, shrink_bounds_btn
 
   #Allow user to select a model
   File = open_dialog("Choose a model",Null(),("*.nl",FileFilter("*.nl",name="All supported formats")))
@@ -66,7 +66,6 @@ function selected_model_has_unbounded()
     counter = counter + 1
   end
 
-println("No unbounded")
   #If we get here there are no unbounded variables
   return false
 
@@ -82,6 +81,7 @@ end
 function shrink_bounds_clicked_callback(leaf, button)
   global selected_model, selected_algorithm, new_bounds
   global s_alpha, s_beta, s_ccpoints, s_ccmaxit, accept_bounds_btn
+  global s_min_points, s_max_points, s_point_every_x
 
   #if the model has been specified
   if selected_model != "" && selected_algorithm != ""
@@ -99,6 +99,14 @@ function shrink_bounds_clicked_callback(leaf, button)
       GetANucleus.run(selected_model, new_bounds)
 
     elseif selected_algorithm == "Nonlinear Range Cutting"
+
+      #Specify settings for nonlinear interval sampling and run
+      NonLinearRangeCutting.set_unbounded_lower_value(unbounded_lower_value)
+      NonLinearRangeCutting.set_unbounded_upper_value(unbounded_upper_value)
+      NonLinearRangeCutting.set_max_random_points(s_max_points)
+      NonLinearRangeCutting.set_min_random_points(s_min_points)
+      NonLinearRangeCutting.set_point_every_x(s_point_every_x)
+      NonLinearRangeCutting.run(selected_model, new_bounds)
 
     elseif selected_algorithm == "Nonlinear Interval Sampling"
 
@@ -222,8 +230,8 @@ function update_variable_list(include_new_bounds)
     #New bounds
     if include_new_bounds
 
-      new_lower = new_bounds[counter, 1]
-      new_upper = new_bounds[counter, 2]
+      new_lower = round(new_bounds[counter, 1], 5)
+      new_upper = round(new_bounds[counter, 2], 5)
 
       percent_change_lower_val = ((current_lower - new_lower) / current_lower) * 100
       if percent_change_lower_val < 0.01
@@ -281,6 +289,8 @@ function settings_clicked_callback(leaf, button)
 
   global unbounded_lower_value, unbounded_upper_value, s_alpha, s_beta, s_ccpoints, s_ccmaxit
   global s_ulv_input, s_uuv_input, s_alpha_input, s_beta_input, s_ccpoints_input, s_ccmaxit_input, settings_window
+  global s_max_points_input, s_min_points_input, s_point_every_x_input
+  global s_max_points, s_min_points, s_point_every_x
 
   settings_window = Window("Algorithm Settings", 400, 450, true, true)
 
@@ -349,14 +359,45 @@ function settings_clicked_callback(leaf, button)
 
   push!(f2, g_md2)
 
-  #Our frame for save or cancel buttons
-  f3 = Frame("Actions")
+  #Our frame for model information
+  f3 = Frame("Range Cutting")
   setproperty!(f3, :margin, 15)
 
   #Grid for general settings
   g_md3 = Grid()
   setproperty!(g_md3, :margin, 10)
   setproperty!(g_md3, :column_spacing, 15)
+
+  #Settings for Constraint Consensus
+  s_max_points_name = Label("Maximum Points")
+  s_max_points_input = Entry()
+  setproperty!(s_max_points_input, :text, s_max_points)
+
+  s_min_points_name = Label("Minimum Points")
+  s_min_points_input = Entry()
+  setproperty!(s_min_points_input, :text, s_min_points)
+
+  s_point_every_x_name = Label("Point Every X")
+  s_point_every_x_input = Entry()
+  setproperty!(s_point_every_x_input, :text, s_point_every_x)
+
+  g_md3[1, 1] = s_max_points_name
+  g_md3[2, 1] = s_max_points_input
+  g_md3[1, 2] = s_min_points_name
+  g_md3[2, 2] = s_min_points_input
+  g_md3[1, 3] = s_point_every_x_name
+  g_md3[2, 3] = s_point_every_x_input
+
+  push!(f3, g_md3)
+
+  #Our frame for save or cancel buttons
+  f4 = Frame("Actions")
+  setproperty!(f4, :margin, 15)
+
+  #Grid for general settings
+  g_md4 = Grid()
+  setproperty!(g_md4, :margin, 10)
+  setproperty!(g_md4, :column_spacing, 15)
 
   #Buttons
   save_settings_btn = Button("Save")
@@ -365,14 +406,15 @@ function settings_clicked_callback(leaf, button)
   cancel_settings_btn = Button("Cancel")
   id_cancel_settings= signal_connect(settings_btn_callback, cancel_settings_btn, "button-press-event")
 
-  g_md3[1, 1] = save_settings_btn
-  g_md3[2, 1] = cancel_settings_btn
+  g_md4[1, 1] = save_settings_btn
+  g_md4[2, 1] = cancel_settings_btn
 
-  push!(f3, g_md3)
+  push!(f4, g_md4)
 
   settings_grid[1, 1] = f1
   settings_grid[1, 2] = f2
   settings_grid[1, 3] = f3
+  settings_grid[1, 4] = f4
 
   #Push our grid items to main window
   push!(settings_window, settings_grid)
@@ -384,6 +426,8 @@ end
 function settings_btn_callback(leaf, button)
   global unbounded_lower_value, unbounded_upper_value, s_alpha, s_beta, s_ccpoints, s_ccmaxit
   global s_ulv_input, s_uuv_input, s_alpha_input, s_beta_input, s_ccpoints_input, s_ccmaxit_input, settings_window
+  global s_max_points_input, s_min_points_input, s_point_every_x_input
+  global s_max_points, s_min_points, s_point_every_x
 
   #Get which button was clicked
   button_clicked = getproperty(leaf, :label, String)
@@ -398,6 +442,9 @@ function settings_btn_callback(leaf, button)
     s_beta = parse(Float64, getproperty(s_beta_input, :text, String))
     s_ccmaxit = parse(Int64, getproperty(s_ccmaxit_input, :text, String))
     s_ccpoints = parse(Int64, getproperty(s_ccpoints_input, :text, String))
+    s_max_points = parse(Int64, getproperty(s_max_points_input, :text, String))
+    s_min_points = parse(Int64, getproperty(s_min_points_input, :text, String))
+    s_point_every_x = parse(Int64, getproperty(s_min_points_input, :text, String))
 
   end
 
