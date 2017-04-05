@@ -6,6 +6,7 @@ include("GUI_callbacks.jl")
 include("./../Algorithms/ConstraintConsensus.jl")
 include("./../Algorithms/GetANucleus.jl")
 include("./../Algorithms/NonLinearIntervalSampling.jl")
+include("./../Algorithms/NonLinearRangeCutting.jl")
 
 using ConstraintConsensus
 using GetANucleus
@@ -15,14 +16,17 @@ using NonLinearIntervalSampling
 selected_model_name = ""
 selected_algorithm = ""
 selected_model = ""
-unbounded_lower_value = -(1*10)^20
-unbounded_upper_value = (1*10)^20
+unbounded_lower_value = -(1*10)^8
+unbounded_upper_value = (1*10)^8
 current_bounds = Array{Float64}
 new_bounds = Array{Float64}
 s_alpha = 0.5
 s_beta = 0.1
 s_ccpoints = 10
 s_ccmaxit = 500
+s_max_points = 1000
+s_min_points = 10
+s_point_every_x = 100
 
 #=
 Main function to load all GUI components
@@ -80,10 +84,6 @@ function load_gui()
   gan_ = MenuItem("Get a Nucleus")
   push!(selectmenu, gan_)
   nrc_ = MenuItem("Nonlinear Range Cutting")
-
-  #Disable nonlinear range cutting until hamza has it working
-  setproperty!(nrc_, :sensitive, false)
-
   push!(selectmenu, nrc_)
   nis_ = MenuItem("Nonlinear Interval Sampling")
   push!(selectmenu, nis_)
@@ -272,3 +272,5 @@ function load_selected_algorithm_frame()
   push!(f3, g_sa)
 
 end
+
+load_gui()
